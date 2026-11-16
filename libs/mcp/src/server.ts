@@ -20,6 +20,7 @@ import {
   stepInputSchema,
   visibilitySchema,
 } from '@opencook/schemas';
+import { type ListServices, registerListTools } from './list-tools.js';
 
 /**
  * What the MCP tools need from the app. The API implements this with the
@@ -39,7 +40,7 @@ export type OpenCookServices = {
   logCooked(id: string, input: CookedInput): CookLogEntry;
   forkRecipe(id: string): Recipe;
   importFromUrl(url: string): Promise<ImportResult>;
-};
+} & ListServices;
 
 export type McpContext = {
   services: OpenCookServices;
@@ -58,7 +59,9 @@ export const INSTRUCTIONS = `openCook is the user's self-hosted recipe book.
 - When the user shares a link, call import_recipe_from_url first. If it finds a recipe, show the user the title and ingredients and save it with create_recipe once they agree. If it finds no structured recipe (often social media posts), read page_text yourself and pass the recipe you find to create_recipe.
 - Ingredients can be plain lines like "200 g butter, softened": openCook parses the amount, unit and preparation, so amounts scale when the user changes servings. Write one ingredient per line with its amount first.
 - Write amounts in steps with units ("add 200 g flour") so they scale too.
-- Ask before deleting anything.`;
+- Ask before deleting anything.
+- Shopping list: the household shares one ongoing list. Add plain lines like "2 x milk" or "500 g mince"; openCook matches names to items it knows and adds amounts to lines already there. When a result says match "new" and has suggestions, ask the user whether they meant one of them (merge_items teaches openCook for next time).
+- When the user says what they're cooking, use add_recipe_to_shopping_list with the servings they mention. It leaves out optional and "to taste" ingredients; ask about things they probably already have (spices, oil, salt) before adding them.`;
 
 const ok = (data: unknown): CallToolResult => ({
   content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
@@ -74,7 +77,7 @@ const fail = (e: unknown): CallToolResult => ({
   ],
 });
 
-async function run(fn: () => unknown): Promise<CallToolResult> {
+export async function run(fn: () => unknown): Promise<CallToolResult> {
   try {
     return ok(await fn());
   } catch (e) {
@@ -158,12 +161,14 @@ const recipeFields = {
   ingredients: z
     .array(ingredientInputSchema)
     .max(200)
+    .optional()
     .describe(
       'One per ingredient. Plain lines like "2 cloves garlic, crushed" are best; objects with quantity, unit (g, ml, tsp, tbsp, cup, clove, can…), name and preparation also work.',
     ),
   steps: z
     .array(stepInputSchema)
     .max(200)
+    .optional()
     .describe(
       'Method steps in order, as text or {text, section, timerSeconds}.',
     ),
@@ -435,5 +440,6 @@ export function createMcpServer(ctx: McpContext): McpServer {
     );
   }
 
+  registerListTools(server, ctx, run);
   return server;
 }

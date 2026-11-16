@@ -1,4 +1,4 @@
-import { Navigate, Outlet, Route, Routes } from 'react-router-dom';
+import { Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom';
 import { FormHint } from '../components/form-hint';
 import { Layout } from '../components/layout';
 import { UpdatePrompt } from '../components/update-prompt';
@@ -6,6 +6,8 @@ import { useMe } from '../lib/queries';
 import { AdminPage } from '../pages/admin';
 import { CookPage } from '../pages/cook';
 import { DiscoverPage } from '../pages/discover';
+import { JoinPage } from '../pages/join';
+import { ListPage } from '../pages/list';
 import { LoginPage } from '../pages/login';
 import { RecipePage } from '../pages/recipe';
 import { RecipeEditPage } from '../pages/recipe-edit';
@@ -15,8 +17,18 @@ import { SettingsPage } from '../pages/settings';
 
 function RequireUser({ admin = false }: { admin?: boolean }) {
   const { data: me, isPending } = useMe();
+  const location = useLocation();
   if (isPending) return <Splash />;
-  if (!me) return <Navigate to="/login" replace />;
+  if (!me) {
+    // Come back here after signing in, e.g. to accept a household invite.
+    const here = location.pathname + location.search;
+    return (
+      <Navigate
+        to={here === '/' ? '/login' : `/login?next=${encodeURIComponent(here)}`}
+        replace
+      />
+    );
+  }
   if (admin && me.role !== 'admin') return <Navigate to="/" replace />;
   return <Outlet />;
 }
@@ -40,6 +52,9 @@ export function App() {
           <Route element={<Layout />}>
             <Route index element={<RecipesPage />} />
             <Route path="discover" element={<DiscoverPage />} />
+            <Route path="list" element={<ListPage />} />
+            <Route path="list/:listId" element={<ListPage />} />
+            <Route path="join/:code" element={<JoinPage />} />
             <Route path="recipes/new" element={<RecipeEditPage />} />
             <Route path="recipes/:id" element={<RecipePage />} />
             <Route path="recipes/:id/edit" element={<RecipeEditPage />} />

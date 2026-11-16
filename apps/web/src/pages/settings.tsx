@@ -5,6 +5,7 @@ import { meSchema, type UpdateMe } from '@opencook/schemas';
 import { FormError } from '../components/auth-card';
 import { InstallButton } from '../components/install-button';
 import { ApiTokens } from '../components/api-tokens';
+import { HouseholdSettings } from '../components/household-settings';
 import { api } from '../lib/api';
 import { authClient } from '../lib/auth-client';
 import { authErrorMessage } from '../lib/auth-errors';
@@ -108,6 +109,8 @@ export function SettingsPage() {
           {updateMe.isSuccess ? 'Saved' : 'Save'}
         </button>
       </form>
+
+      <HouseholdSettings />
 
       <ApiTokens />
 

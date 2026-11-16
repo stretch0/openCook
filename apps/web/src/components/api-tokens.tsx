@@ -15,6 +15,8 @@ import { FormError } from './auth-card';
 const SCOPE_LABELS: Record<TokenScope, string> = {
   'recipes:read': 'Read and search my recipes',
   'recipes:write': 'Save, change and delete my recipes',
+  'lists:read': 'Read our shopping lists and purchase history',
+  'lists:write': 'Add to, change and tick off our shopping lists',
 };
 
 /** Personal tokens that let AI assistants use openCook over MCP. */

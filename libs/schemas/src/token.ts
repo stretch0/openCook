@@ -1,7 +1,12 @@
 import { z } from 'zod';
 
 /** What an API token (used by MCP clients) may do. */
-export const TOKEN_SCOPES = ['recipes:read', 'recipes:write'] as const;
+export const TOKEN_SCOPES = [
+  'recipes:read',
+  'recipes:write',
+  'lists:read',
+  'lists:write',
+] as const;
 export const tokenScopeSchema = z.enum(TOKEN_SCOPES);
 export type TokenScope = z.infer<typeof tokenScopeSchema>;
 

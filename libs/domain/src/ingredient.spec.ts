@@ -111,6 +111,10 @@ describe('parseIngredientLine', () => {
     expect(parse('1 t salt')).toMatchObject({ unit: 'tsp', name: 'salt' });
     expect(parse('1 tomato')).toMatchObject({ unit: null, name: 'tomato' });
     expect(parse('4 fl oz milk')).toMatchObject({ unit: 'floz', name: 'milk' });
+    expect(parse('1 loaf sourdough')).toMatchObject({
+      unit: 'loaf',
+      name: 'sourdough',
+    });
   });
 
   it('keeps the original line', () => {

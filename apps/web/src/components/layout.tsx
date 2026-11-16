@@ -29,9 +29,9 @@ export function Layout() {
             <Icon d="M4 19.5V5a2 2 0 012-2h13v16H6a2 2 0 00-2 2zm0 0A2 2 0 006 21h13M9 7h6" />
             Recipes
           </NavLink>
-          <NavLink to="/recipes/new" className={tabClass}>
-            <Icon d="M12 5v14M5 12h14" />
-            Add
+          <NavLink to="/list" className={tabClass}>
+            <Icon d="M3 4h2l2.4 11.2a1 1 0 001 .8h9.2a1 1 0 001-.8L20 8H6M9 20.5a.5.5 0 100-1 .5.5 0 000 1zm8 0a.5.5 0 100-1 .5.5 0 000 1z" />
+            List
           </NavLink>
           <NavLink to="/discover" className={tabClass}>
             <Icon d="M21 21l-4.3-4.3M10.5 18a7.5 7.5 0 100-15 7.5 7.5 0 000 15z" />

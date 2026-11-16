@@ -1,4 +1,4 @@
-import { eq, inArray, isNull, or } from 'drizzle-orm';
+import { and, eq, inArray, isNull, or } from 'drizzle-orm';
 import { type Db, schema } from '@opencook/db';
 import {
   CATALOGUE,
@@ -8,6 +8,7 @@ import {
   suggestItems,
 } from '@opencook/domain';
 import type { Item, ItemSearch } from '@opencook/schemas';
+import { HttpError, notFound } from './errors.js';
 
 type ItemRow = typeof schema.item.$inferSelect;
 
@@ -86,9 +87,21 @@ function candidates(
       ),
     )
     .all();
+  // A household's own aliases win: once it says "mouth wash" is its
+  // "Mouthwash", no other item answers to that name for it.
+  const claimed = new Map(
+    aliases
+      .filter((a) => a.householdId === householdId)
+      .map((a) => [a.normalKey, a.itemId]),
+  );
   const keys = new Map<string, string[]>();
-  for (const r of rows) keys.set(r.id, [r.normalKey]);
-  for (const a of aliases) keys.get(a.itemId)?.push(a.normalKey);
+  const add = (id: string, key: string) => {
+    const owner = claimed.get(key);
+    if (!owner || owner === id) keys.get(id)?.push(key);
+  };
+  for (const r of rows) keys.set(r.id, []);
+  for (const r of rows) add(r.id, r.normalKey);
+  for (const a of aliases) add(a.itemId, a.normalKey);
   const sorted = [...rows].sort(
     (a, b) => Number(a.householdId === null) - Number(b.householdId === null),
   );
@@ -126,7 +139,8 @@ export function searchItems(
 
 export type ResolvedItem = {
   item: Item;
-  match: 'exact' | 'new';
+  /** exact: same normal key; alias: another name for the item; new: created. */
+  match: 'exact' | 'alias' | 'new';
   suggestions: Item[];
 };
 
@@ -149,9 +163,10 @@ export function resolveItems(
     if (found) return { item: found, match: 'exact', suggestions: [] };
     const result = matchItem(name, list);
     if (result.kind === 'exact') {
+      const row = rows.get(result.item.id) as ItemRow;
       return {
-        item: toItem(rows.get(result.item.id) as ItemRow),
-        match: 'exact',
+        item: toItem(row),
+        match: row.normalKey === key ? 'exact' : 'alias',
         suggestions: [],
       };
     }
@@ -209,4 +224,209 @@ export function itemsById(db: Db, ids: string[]): Map<string, Item> {
       .all()
       .map((r) => [r.id, toItem(r)]),
   );
+}
+
+/**
+ * Each item's aisle for a household: its own choice if it moved the item,
+ * otherwise the item's.
+ */
+export function categoriesFor(
+  db: Db,
+  householdId: string,
+  itemIds: string[],
+): Map<string, string> {
+  const ids = [...new Set(itemIds)];
+  if (!ids.length) return new Map();
+  const out = new Map(
+    db
+      .select({ id: schema.item.id, category: schema.item.category })
+      .from(schema.item)
+      .where(inArray(schema.item.id, ids))
+      .all()
+      .map((r) => [r.id, r.category]),
+  );
+  for (const p of db
+    .select()
+    .from(schema.householdItemPreference)
+    .where(
+      and(
+        eq(schema.householdItemPreference.householdId, householdId),
+        inArray(schema.householdItemPreference.itemId, ids),
+      ),
+    )
+    .all()) {
+    if (p.category) out.set(p.itemId, p.category);
+  }
+  return out;
+}
+
+/** Moves an item to another aisle for this household (or for good, if it's theirs). */
+export function setItemCategory(
+  db: Db,
+  householdId: string,
+  itemId: string,
+  category: string,
+) {
+  const row = db
+    .select()
+    .from(schema.item)
+    .where(eq(schema.item.id, itemId))
+    .get();
+  if (!row || (row.householdId && row.householdId !== householdId)) {
+    throw notFound('Item not found');
+  }
+  if (row.householdId === householdId) {
+    db.update(schema.item)
+      .set({ category })
+      .where(eq(schema.item.id, itemId))
+      .run();
+    return;
+  }
+  db.insert(schema.householdItemPreference)
+    .values({ householdId, itemId, category })
+    .onConflictDoUpdate({
+      target: [
+        schema.householdItemPreference.householdId,
+        schema.householdItemPreference.itemId,
+      ],
+      set: { category, updatedAt: new Date() },
+    })
+    .run();
+}
+
+/**
+ * "These are the same": folds one item into another for this household.
+ * The old name becomes an alias, so typing it finds the kept item from now
+ * on, and list lines, purchases and the household's recipes move across so
+ * the history stays in one place.
+ */
+export function mergeItems(
+  db: Db,
+  householdId: string,
+  fromId: string,
+  intoId: string,
+  /** Recipes whose ingredients should follow, e.g. the household's own. */
+  recipeIds: string[],
+) {
+  if (fromId === intoId) throw new HttpError(422, 'Pick two different items.');
+  const visible = (id: string) => {
+    const row = db
+      .select()
+      .from(schema.item)
+      .where(eq(schema.item.id, id))
+      .get();
+    if (!row || (row.householdId && row.householdId !== householdId)) {
+      throw notFound('Item not found');
+    }
+    return row;
+  };
+  const from = visible(fromId);
+  const into = visible(intoId);
+  db.transaction((tx) => {
+    const keys = new Set([
+      from.normalKey,
+      ...tx
+        .select({ key: schema.itemAlias.normalKey })
+        .from(schema.itemAlias)
+        .where(
+          and(
+            eq(schema.itemAlias.itemId, fromId),
+            or(
+              isNull(schema.itemAlias.householdId),
+              eq(schema.itemAlias.householdId, householdId),
+            ),
+          ),
+        )
+        .all()
+        .map((a) => a.key),
+    ]);
+    keys.delete(into.normalKey);
+    for (const key of keys) {
+      tx.insert(schema.itemAlias)
+        .values({ itemId: intoId, householdId, normalKey: key })
+        .run();
+    }
+    const lists = tx
+      .select({ id: schema.shoppingList.id })
+      .from(schema.shoppingList)
+      .where(eq(schema.shoppingList.householdId, householdId))
+      .all()
+      .map((l) => l.id);
+    if (lists.length) {
+      tx.update(schema.shoppingListItem)
+        .set({ itemId: intoId })
+        .where(
+          and(
+            eq(schema.shoppingListItem.itemId, fromId),
+            inArray(schema.shoppingListItem.listId, lists),
+          ),
+        )
+        .run();
+    }
+    tx.update(schema.purchaseEvent)
+      .set({ itemId: intoId })
+      .where(
+        and(
+          eq(schema.purchaseEvent.itemId, fromId),
+          eq(schema.purchaseEvent.householdId, householdId),
+        ),
+      )
+      .run();
+    if (recipeIds.length) {
+      tx.update(schema.recipeIngredient)
+        .set({ itemId: intoId })
+        .where(
+          and(
+            eq(schema.recipeIngredient.itemId, fromId),
+            inArray(schema.recipeIngredient.recipeId, recipeIds),
+          ),
+        )
+        .run();
+    }
+    // A household's own item is gone once merged. A shared one stays for
+    // other households; the aliases above stop it matching for this one.
+    if (from.householdId === householdId) {
+      tx.delete(schema.item).where(eq(schema.item.id, fromId)).run();
+    }
+  });
+  return toItem(into);
+}
+
+/**
+ * After someone moves household, re-links their recipes' ingredients to
+ * items the new household can see.
+ */
+export function relinkRecipeItems(db: Db, userId: string, householdId: string) {
+  const ingredients = db
+    .select({
+      recipeId: schema.recipeIngredient.recipeId,
+      id: schema.recipeIngredient.id,
+      name: schema.recipeIngredient.name,
+    })
+    .from(schema.recipeIngredient)
+    .innerJoin(
+      schema.recipe,
+      eq(schema.recipe.id, schema.recipeIngredient.recipeId),
+    )
+    .where(eq(schema.recipe.ownerId, userId))
+    .all();
+  if (!ingredients.length) return;
+  const resolved = resolveItems(
+    db,
+    householdId,
+    ingredients.map((i) => i.name),
+  );
+  db.transaction((tx) => {
+    ingredients.forEach((i, n) => {
+      tx.update(schema.recipeIngredient)
+        .set({ itemId: resolved[n]?.item.id ?? null })
+        .where(
+          and(
+            eq(schema.recipeIngredient.recipeId, i.recipeId),
+            eq(schema.recipeIngredient.id, i.id),
+          ),
+        )
+        .run();
+    });
+  });
 }
