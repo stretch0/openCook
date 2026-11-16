@@ -213,7 +213,8 @@ type Normalised = {
   unit: string | null;
   note: string | null;
   itemId?: string;
-  source?: ListItemSource;
+  /** Recipes that asked for it. */
+  sources?: ListItemSource[];
 };
 
 function normaliseEntry(entry: ListEntry): Normalised {
@@ -253,6 +254,8 @@ function normaliseEntry(entry: ListEntry): Normalised {
  * Mouthwash); if that item is already on the list and the amounts can be
  * added, the line's amount goes up instead of a second line appearing.
  */
+export type ListAddition = Normalised;
+
 export function addToList(
   db: Db,
   viewer: Viewer,
@@ -318,9 +321,10 @@ export function addToList(
         }
       }
       if (combinedInto && amount) {
-        const sources = n.source
-          ? mergeSources(combinedInto.sources, n.source)
-          : combinedInto.sources;
+        const sources = (n.sources ?? []).reduce(
+          mergeSources,
+          combinedInto.sources,
+        );
         tx.update(schema.shoppingListItem)
           .set({
             quantity: amount.quantity,
@@ -345,7 +349,7 @@ export function addToList(
           quantity: n.quantity,
           unit: n.unit,
           note: n.note,
-          sources: n.source ? [n.source] : [],
+          sources: n.sources ?? [],
           addedBy: viewer.userId,
         })
         .returning()
@@ -483,6 +487,18 @@ export function checkListItems(
             listItemId: line.id,
           })
           .run();
+        // Bought it, so it's no longer running low.
+        if (line.itemId) {
+          tx.update(schema.pantryItem)
+            .set({ status: 'have' })
+            .where(
+              and(
+                eq(schema.pantryItem.householdId, viewer.householdId),
+                eq(schema.pantryItem.itemId, line.itemId),
+              ),
+            )
+            .run();
+        }
       } else {
         tx.delete(schema.purchaseEvent)
           .where(eq(schema.purchaseEvent.listItemId, line.id))
@@ -543,7 +559,7 @@ export function addRecipeToList(
         unit: i.unit,
         note: i.note,
         itemId: i.itemId ?? undefined,
-        source,
+        sources: [source],
       };
     }),
   );

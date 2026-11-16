@@ -15,11 +15,13 @@ It runs as one Docker image on your own server, a Raspberry Pi or a small [Fly.i
 - **Photos** from your camera or files, resized and stripped of location data.
 - **Notes and history.** Private notes on any recipe, and a record of when you cooked it.
 - **A shopping list you share.** Invite your partner into your household and you both see one ongoing list, live. "mouth wash" and "Mouthwash" are the same thing, amounts add up ("200 g" + "1 kg" mince is "1.2 kg"), everything is grouped by aisle, and close spellings get a "Did you mean…?". Add a recipe's ingredients at the servings you're cooking. Ticking things off builds a history of what you buy and when.
+- **Plan the week, shop for it.** Put recipes on the days you'll cook them, then "Shop for this week" adds up everything they need and sorts it into what to buy, what you've probably got (your staples, or something bought recently, with the reason) and what's already on the list. Mark it cooked from the plan.
+- **Knows when you're running low.** From what you tick off, openCook learns how often you buy things and suggests them when they're about due ("milk: every 6 days, it's been 7").
 - **Share and copy.** Make recipes public on your instance, browse other cooks' in Discover, and copy one to make your own variation (it remembers where it came from).
-- **AI assistants over MCP.** Search, read (scaled), save, edit, note and import recipes; read and change the shopping list ("I'm making the curry and the dal this week, add what I need"). Tokens are scoped and revocable. See [docs/MCP.md](docs/MCP.md).
+- **AI assistants over MCP.** Search, read (scaled), save, edit, note and import recipes; read and change the shopping list, meal plan and pantry ("plan dinners for this week from my recipes, then put what we need on the list"). Tokens are scoped and revocable. See [docs/MCP.md](docs/MCP.md).
 - Passkeys or passwords, invite-only sign-up, light and dark themes, works offline for recipes you've opened.
 
-**Coming next:** a weekly meal planner that fills the list, working out what you've probably already got, and noticing when you're likely running low. See [ROADMAP.md](ROADMAP.md).
+**Coming next:** signing in from claude.ai and ChatGPT without pasting a token, then following other cooks. See [ROADMAP.md](ROADMAP.md).
 
 ## Run it
 

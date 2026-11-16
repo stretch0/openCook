@@ -22,6 +22,7 @@ import {
   useShoppingList,
   useUpdateListItem,
 } from '../lib/shopping';
+import { useRestock } from '../lib/planner';
 
 /**
  * The household's shopping list: add things, tick them off in the shop.
@@ -44,6 +45,7 @@ export function ListPage() {
     <>
       <ListSwitcher current={data.id} kind={data.kind} name={data.name} />
       <AddBox listId={listId} />
+      {data.kind === 'ongoing' && <RestockBanner />}
 
       {data.items.length === 0 ? (
         <div className="card text-center text-stone-500">
@@ -124,6 +126,47 @@ export function ListPage() {
         />
       )}
     </>
+  );
+}
+
+/** "You usually buy milk every 6 days; it's been 7." */
+function RestockBanner() {
+  const restock = useRestock();
+  const add = useAddToList('ongoing');
+  const due = restock.data ?? [];
+  return (
+    <div className="flex flex-wrap items-center gap-2 text-sm">
+      {due.slice(0, 3).map((r) => (
+        <button
+          key={r.itemId}
+          type="button"
+          className="rounded-full border border-dashed border-brand-500 px-3 py-1 text-brand-700 dark:text-brand-500"
+          title={`Usually every ${r.intervalDays} days; it's been ${r.daysSince}`}
+          onClick={() =>
+            add.mutate(
+              [
+                {
+                  name: r.name,
+                  itemId: r.itemId,
+                  quantity: r.lastQuantity,
+                  unit: r.lastUnit,
+                },
+              ],
+              { onSuccess: () => void restock.refetch() },
+            )
+          }
+        >
+          + {r.name}
+          <span className="text-xs text-stone-500">
+            {' '}
+            · {r.daysSince}d since
+          </span>
+        </button>
+      ))}
+      <Link to="/pantry" className="ml-auto text-brand-600">
+        {due.length > 3 ? `${due.length - 3} more running low · ` : ''}Pantry
+      </Link>
+    </div>
   );
 }
 

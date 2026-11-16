@@ -2,15 +2,19 @@ import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   type MeasurePreference,
+  addDays,
   displayAmount,
   scaleStep,
   servingsFactor,
+  today,
 } from '@opencook/domain';
-import type { Ingredient, Recipe } from '@opencook/schemas';
+import type { Ingredient, MealSlot, Recipe } from '@opencook/schemas';
 import { FormError } from '../components/auth-card';
 import { BackLink } from '../components/back-link';
 import { RecipeThumb } from '../components/recipe-card';
-import { formatAgo, formatMinutes } from '../lib/format';
+import { formatAgo, formatDay, formatMinutes } from '../lib/format';
+import { useAddPlanEntry } from '../lib/planner';
+import { Sheet } from '../components/sheet';
 import { useMe } from '../lib/queries';
 import { useRecipeToList } from '../lib/shopping';
 import {
@@ -342,9 +346,17 @@ function Actions({ recipe, servings }: { recipe: Recipe; servings: number }) {
   const remove = useDeleteRecipe();
   const cooked = useLogCooked(recipe.id);
   const [shopping, setShopping] = useState(false);
+  const [planning, setPlanning] = useState(false);
 
   return (
     <div className="space-y-2">
+      {planning && (
+        <PlanSheet
+          recipe={recipe}
+          servings={servings}
+          onClose={() => setPlanning(false)}
+        />
+      )}
       {shopping && (
         <AddToListSheet
           recipe={recipe}
@@ -371,6 +383,13 @@ function Actions({ recipe, servings }: { recipe: Recipe; servings: number }) {
           onClick={() => setShopping(true)}
         >
           Add ingredients to shopping list
+        </button>
+        <button
+          type="button"
+          className="btn-secondary col-span-2"
+          onClick={() => setPlanning(true)}
+        >
+          Add to meal plan
         </button>
       </div>
       <p className="text-center text-xs text-stone-500">
@@ -626,5 +645,86 @@ function AddToListSheet({
         )}
       </div>
     </div>
+  );
+}
+
+/** Puts the recipe on a day of the plan, at the servings chosen on the page. */
+function PlanSheet({
+  recipe,
+  servings,
+  onClose,
+}: {
+  recipe: Recipe;
+  servings: number;
+  onClose: () => void;
+}) {
+  const { data: me } = useMe();
+  const start = today(me?.timezone);
+  const days = Array.from({ length: 14 }, (_, i) => addDays(start, i));
+  const [day, setDay] = useState(start);
+  const [slot, setSlot] = useState<MealSlot>('dinner');
+  const add = useAddPlanEntry();
+
+  return (
+    <Sheet label="Add to meal plan" onClose={onClose}>
+      <h2 className="text-lg font-semibold">Add to meal plan</h2>
+      {add.isSuccess ? (
+        <div className="space-y-3">
+          <p>
+            Planned for {formatDay(day)}, for {servings}.
+          </p>
+          <div className="flex gap-2">
+            <Link className="btn-primary" to={`/plan?week=${day}`}>
+              View plan
+            </Link>
+            <button type="button" className="btn-secondary" onClick={onClose}>
+              Done
+            </button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-4 gap-2" role="group" aria-label="Day">
+            {days.map((d) => (
+              <button
+                key={d}
+                type="button"
+                aria-pressed={day === d}
+                onClick={() => setDay(d)}
+                className={`rounded-lg border px-1 py-2 text-xs ${
+                  day === d
+                    ? 'border-brand-600 bg-brand-600 text-white'
+                    : 'border-stone-300 dark:border-stone-700'
+                }`}
+              >
+                {d === start ? 'Today' : formatDay(d)}
+              </button>
+            ))}
+          </div>
+          <select
+            className="input"
+            aria-label="Meal"
+            value={slot}
+            onChange={(e) => setSlot(e.target.value as MealSlot)}
+          >
+            <option value="breakfast">Breakfast</option>
+            <option value="lunch">Lunch</option>
+            <option value="dinner">Dinner</option>
+            <option value="snack">Snack</option>
+          </select>
+          <FormError message={add.error?.message ?? null} />
+          <button
+            type="button"
+            className="btn-primary w-full"
+            disabled={add.isPending}
+            onClick={() =>
+              add.mutate({ date: day, slot, recipeId: recipe.id, servings })
+            }
+          >
+            Plan for {servings} on {day === start ? 'today' : formatDay(day)}
+          </button>
+        </>
+      )}
+    </Sheet>
   );
 }

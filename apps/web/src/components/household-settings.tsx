@@ -54,8 +54,8 @@ export function HouseholdSettings() {
     <section className="card space-y-3">
       <h2 className="font-semibold">Household</h2>
       <p className="text-sm text-stone-500">
-        Everyone in your household shares the shopping list (and, soon, the meal
-        plan and pantry). Recipes stay your own.
+        Everyone in your household shares the shopping list, meal plan and
+        pantry, and can see each other's recipes. Only you can change yours.
       </p>
       <form onSubmit={onRename} className="flex gap-2">
         <input

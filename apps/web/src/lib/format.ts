@@ -38,3 +38,13 @@ export function formatAgo(iso: string, now = Date.now()) {
   if (days < 60) return `${Math.round(days / 7)} weeks ago`;
   return `${Math.round(days / 30)} months ago`;
 }
+
+/** "Mon 17 Nov" for a plan day (YYYY-MM-DD, shown as that calendar day). */
+export function formatDay(date: string) {
+  return new Date(`${date}T12:00:00Z`).toLocaleDateString(undefined, {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    timeZone: 'UTC',
+  });
+}

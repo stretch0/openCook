@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { type FormEvent, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { meSchema, type UpdateMe } from '@opencook/schemas';
 import { FormError } from '../components/auth-card';
 import { InstallButton } from '../components/install-button';
@@ -109,6 +109,12 @@ export function SettingsPage() {
           {updateMe.isSuccess ? 'Saved' : 'Save'}
         </button>
       </form>
+
+      {me.role === 'admin' && (
+        <Link to="/admin" className="card block font-medium text-brand-600">
+          Admin: invites to this openCook →
+        </Link>
+      )}
 
       <HouseholdSettings />
 
