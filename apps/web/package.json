@@ -1,0 +1,19 @@
+{
+  "name": "@opencook/web",
+  "version": "0.0.1",
+  "private": true,
+  "nx": {
+    "name": "web"
+  },
+  "dependencies": {
+    "@opencook/domain": "*",
+    "@opencook/schemas": "*",
+    "@better-auth/passkey": "*",
+    "@tanstack/react-query": "*",
+    "better-auth": "*",
+    "react": "*",
+    "react-dom": "*",
+    "react-router-dom": "*",
+    "zod": "*"
+  }
+}

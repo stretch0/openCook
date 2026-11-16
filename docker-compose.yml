@@ -1,0 +1,14 @@
+services:
+  opencook:
+    image: ghcr.io/stretch0/opencook:latest
+    # To build from source instead: replace `image` with `build: .`
+    restart: unless-stopped
+    ports:
+      - '${PORT:-3000}:3000'
+    env_file: .env
+    environment:
+      # PORT in .env picks the port on this machine; inside the container
+      # openCook always listens on 3000.
+      PORT: 3000
+    volumes:
+      - ./data:/data
