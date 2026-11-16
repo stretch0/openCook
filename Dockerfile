@@ -37,7 +37,12 @@ COPY docker-entrypoint.sh /usr/local/bin/opencook-entrypoint
 # Starts as root only to fix the data folder's owner; see docker-entrypoint.sh.
 # npm, corepack and yarn come with the base image but nothing runs them here,
 # and their own dependencies were most of the image's vulnerability reports.
-RUN mkdir -p /data && chown node:node /data \
+# Debian security fixes often land before a new node image digest does, so
+# apply them here (Dependabot still bumps the pinned digest).
+RUN apt-get update \
+  && apt-get upgrade -y --no-install-recommends \
+  && rm -rf /var/lib/apt/lists/* \
+  && mkdir -p /data && chown node:node /data \
   && rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
     /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack \
     /opt/yarn-* /usr/local/bin/yarn /usr/local/bin/yarnpkg
