@@ -66,11 +66,24 @@ Each recipe has a `revision`. Edits may send `expectedRevision`; a mismatch is a
 
 Two names are the same item when they share a **normal key** (`normalItemKey`): lowercase, accents folded, punctuation and spaces removed, the last word made singular, and descriptions like "large" or "fresh" dropped. So "Mouth wash", "mouth-wash" and "Mouthwash" are all `mouthwash`, and "Large free-range eggs" is `egg`.
 
-Matching (`matchItem`, `resolveItems`) looks for an exact key or alias, household items first. Close spellings ("mouthwsh") are **only ever suggestions** (edit distance scaled by length, plus prefixes), never merged silently. The catalogue doesn't need to be complete; it just gives good autocomplete and aisles from day one. The shopping list (next milestone) learns per household: merging two items adds an alias.
+Matching (`matchItem`, `resolveItems`) looks for an exact key or alias, household items first. Close spellings ("mouthwsh") are **only ever suggestions** (edit distance scaled by length, plus prefixes), never merged silently. The catalogue doesn't need to be complete; it just gives good autocomplete and aisles from day one. Households teach it their own names by merging items on the shopping list (below).
 
 ## Households
 
-Everyone gets a household when they sign up (`createHousehold` in the Better Auth `after` hook). Items are scoped to it now; the shared shopping list, pantry and meal plan will be too. Inviting a partner into a household comes with the shopping list.
+- Everyone is in exactly one household (`household`, `household_member`); it's created with the account. Items, shopping lists and purchases belong to the household; recipes stay with their owner.
+- `household_invite` is a single-use link valid for 7 days. Joining moves you across: whatever was still to buy on your old ongoing list is added to the new one (`carryOverList`), your recipes' ingredients are re-linked to items the new household can see (`relinkRecipeItems`), and a household left empty is deleted. Leaving gives you a fresh household of your own.
+
+## Shopping lists
+
+- `shopping_list`: one `ongoing` list per household (made when first needed; can't be deleted) plus any `named` lists. The API accepts `ongoing` in place of its id.
+- `shopping_list_item` is a line: display name, `item_id`, amount, note, `sources` (which recipes wanted it, at what servings), who added it, and `checked_at`/`checked_by`.
+- **Adding** (`addToList`) parses each line with `parseIngredientLine`, resolves the name to an item (`resolveItems`: exact key, alias, or a new household item with "Did you mean…?" suggestions) and, if that item already has an unticked line whose amount it can be added to (`combineAmounts`: same unit, or both weights / both volumes), adds to that line. Otherwise it's a new line.
+- **Aisles**: a line's aisle is its item's category, overridden per household by `household_item_preference` when someone moves it. `groupByAisle` orders aisles like a walk round a supermarket.
+- **Merging** (`mergeItems`): the old item's key and aliases become household aliases of the kept item. A household alias claims its key, so a shared catalogue item that was merged away no longer matches for that household. List lines, purchases and the household's recipe ingredients move across; a household-owned item is deleted.
+- **Ticking off** sets `checked_at` and writes a `purchase_event` (household, item, name, amount, time, who, source `list`/`mcp`, the line it came from). Unticking deletes that event, so mistakes don't pollute the history. Ticked lines show under "Recently bought" for a week.
+- **Recipes to the list** (`addRecipeToList`): scaled with `scaleAmount`, a range buys the larger amount, optional and to-taste ingredients are skipped unless picked, and each line records the recipe in `sources`.
+- **Live updates**: every change calls `listChanged(listId)`, an in-process event emitter (one server, so no broker is needed). `GET /api/lists/:id/events` is a Server-Sent Events stream that sends `ready`, then `changed` on each edit, with a comment every 25 s to keep proxies from closing it. The web app refetches on each event; the service worker never caches the stream.
+- The web app ticks lines off immediately (optimistic update) and rolls back if the server refuses. TanStack Query pauses requests made without a connection and sends them when it's back, while the app stays open.
 
 ## Visibility, notes and copies
 
@@ -93,7 +106,9 @@ Everyone gets a household when they sign up (`createHousehold` in the Better Aut
 
 - `/mcp` is a stateless Streamable HTTP endpoint (`WebStandardStreamableHTTPServerTransport`, JSON responses). Each request builds a server for the token's user.
 - Auth is a personal API token (`ock_…`, created in Settings → AI assistants). Only its SHA-256 is stored. Tokens have scopes (`recipes:read`, `recipes:write`) and an optional expiry; tools a token can't use aren't listed.
-- Tools: `search_recipes`, `get_recipe` (scaled to any servings), `list_tags`, `import_recipe_from_url`, `create_recipe`, `update_recipe` (partial, with `expected_revision`), `delete_recipe` (needs `confirm: true`), `add_recipe_note`, `log_cooked`, `fork_recipe`. The server's instructions tell the assistant to search before creating and ask before deleting.
+- Recipe tools: `search_recipes`, `get_recipe` (scaled to any servings), `list_tags`, `import_recipe_from_url`, `create_recipe`, `update_recipe` (partial, with `expected_revision`), `delete_recipe` (needs `confirm: true`), `add_recipe_note`, `log_cooked`, `fork_recipe`.
+- List tools (`libs/mcp/src/list-tools.ts`, scopes `lists:read` / `lists:write`): `get_shopping_lists`, `get_shopping_list`, `get_purchase_history`, `add_shopping_items`, `update_shopping_item`, `remove_shopping_items`, `check_off_items`, `add_recipe_to_shopping_list`, `merge_items`. Purchases ticked off by an assistant are recorded with source `mcp`.
+- The server's instructions tell the assistant to search before creating, ask before deleting, check "did you mean" suggestions with the user, and ask about things they probably already have before adding a recipe's ingredients.
 - OAuth 2.1 (so Claude.ai and ChatGPT can add openCook as a connector without pasting a token) is planned; see the roadmap.
 
 See [MCP.md](MCP.md) for connecting an assistant.

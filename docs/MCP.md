@@ -50,7 +50,19 @@ Adding openCook as a connector on claude.ai or ChatGPT, signing in instead of pa
 | `log_cooked`             | Records that you cooked it, with an optional rating                                               | `recipes:write` |
 | `fork_recipe`            | Copies someone's public recipe into yours so you can change it                                    | `recipes:write` |
 
-Shopping list, meal plan and pantry tools come with those features (see [ROADMAP.md](../ROADMAP.md)).
+| `get_shopping_lists` | The household's lists and how much is left on each | `lists:read` |
+| `get_shopping_list` | What's still to buy, by aisle; optionally what was bought this week | `lists:read` |
+| `get_purchase_history` | When things were bought, newest first, for one item or everything | `lists:read` |
+| `add_shopping_items` | Adds lines like "2 x milk"; reports how each name matched, and "did you mean" for new ones | `lists:write` |
+| `update_shopping_item` | Changes a line's name, amount, note or aisle | `lists:write` |
+| `remove_shopping_items` | Takes lines off without recording a purchase | `lists:write` |
+| `check_off_items` | Ticks lines off (recording the purchase), or puts them back | `lists:write` |
+| `add_recipe_to_shopping_list` | A recipe's ingredients, scaled to the servings, noting which recipe wanted them | `lists:write` |
+| `merge_items` | Two names are the same thing; teaches openCook the household's spelling | `lists:write` |
+
+Meal plan and pantry tools come with those features (see [ROADMAP.md](../ROADMAP.md)).
+
+Try: _"I'm cooking the chickpea curry for 6 and the dal on Thursday. Put what I need on the shopping list, but ask me about spices first."_
 
 ## Saving recipes from social media
 

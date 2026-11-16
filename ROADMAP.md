@@ -26,15 +26,18 @@ openCook is a self-hosted recipe app for home cooks: track, find and create reci
 - ✅ MCP server at `/mcp` with scoped, revocable API tokens and recipe tools
 - ✅ Starter item catalogue (~400 groceries and household things with aisles and aliases), item matching
 
-## M2 – Households and the shared shopping list
+## M2 – Households and the shared shopping list ✅
 
-- Invite a partner into your household by link
-- **One ongoing list per household** that you keep adding to and ticking off; optional extra named lists ("BBQ Saturday")
-- Items resolve through the item catalogue: same key merges, quantities add up when units are compatible, aisles group the list, "Did you mean…?" for close spellings, "these are the same" merges teach the household's aliases
-- Ticked items sit in "recently bought" for a one-tap re-add
-- Live updates between phones (Server-Sent Events) and an offline queue for the supermarket
-- Every tick-off writes a **purchase event** (item, amount, when, who): the timeline the pantry learns from
-- MCP: `get_shopping_list`, `add_shopping_items` (reports exact/alias/new matches and suggestions), `update_shopping_item`, `remove_shopping_items`, `check_off_items`
+- ✅ Invite someone into your household with a link (single use, 7 days); leave for a household of your own
+- ✅ **One ongoing list per household**, plus optional named lists ("BBQ Saturday")
+- ✅ Items resolve through the item catalogue: same key or alias joins the existing line and adds the amounts when the units are compatible ("200 g" + "1 kg" → "1.2 kg"), aisles group the list, "Did you mean…?" for close spellings, and "these are the same" merges teach the household's aliases (moving its lines and purchase history across)
+- ✅ Moving an item to another aisle is remembered for the household
+- ✅ Ticked items sit in "Recently bought" for a week, with "Put back"
+- ✅ Live updates between phones (Server-Sent Events); ticks show at once and are sent in the background
+- ✅ Every tick-off writes a **purchase event** (item, amount, when, who); unticking removes it
+- ✅ Add a recipe's ingredients at the chosen servings, picking which ones (to-taste and optional ones start unticked); lines say which recipes wanted them
+- ✅ MCP: `get_shopping_lists`, `get_shopping_list`, `add_shopping_items`, `update_shopping_item`, `remove_shopping_items`, `check_off_items`, `add_recipe_to_shopping_list`, `merge_items`, `get_purchase_history`, behind new `lists:read` / `lists:write` scopes
+- Later: changes made with no signal are retried while the app stays open, but not yet kept across a restart of the app (a persistent offline queue)
 
 ## M3 – Meal planner and pantry intelligence
 
@@ -44,7 +47,7 @@ openCook is a self-hosted recipe app for home cooks: track, find and create reci
 - **Restock prediction** from purchase history: median gap between purchases; "you usually buy milk every 6 days; it's been 7"
 - MCP: `get_meal_plan`, `set_meal_plan`, `preview_shopping_for_recipes` (a dry run with reasons), `add_recipes_to_shopping_list`, `get_pantry`, `update_pantry`, `get_restock_suggestions`, `get_purchase_history`
 - **OAuth 2.1** on `/mcp` so claude.ai and ChatGPT can add openCook as a connector (discovery, dynamic registration, PKCE, consent screen), as openGym does
-- Scopes for lists, plans and pantry
+- Scopes for plans and pantry
 
 ## M4 – Social
 

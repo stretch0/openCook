@@ -195,4 +195,113 @@ describe('mcp', () => {
     });
     expect(res.status).toBe(401);
   });
+
+  it('reads and changes the shared shopping list', async () => {
+    const { app } = setup();
+    const { cookie } = await signUp(app, 'cook@example.com');
+    const client = await connect(
+      app,
+      await tokenFor(app, cookie, [
+        'recipes:read',
+        'recipes:write',
+        'lists:read',
+        'lists:write',
+      ]),
+    );
+    const recipe = data(
+      await client.callTool({
+        name: 'create_recipe',
+        arguments: {
+          title: 'Pancakes',
+          servings: 4,
+          ingredients: ['200 g plain flour', '2 eggs', '300 ml milk'],
+        },
+      }),
+    );
+
+    const addedItems = data(
+      await client.callTool({
+        name: 'add_shopping_items',
+        arguments: { items: ['1 l milk', 'mouthwsh'] },
+      }),
+    );
+    expect(addedItems[0]).toMatchObject({
+      match: 'exact',
+      line: { name: 'Milk', amount: '1 l', aisle: 'Dairy & eggs' },
+    });
+    expect(addedItems[1]).toMatchObject({
+      match: 'new',
+      did_you_mean: [{ name: 'mouthwash' }],
+    });
+
+    const fromRecipe = data(
+      await client.callTool({
+        name: 'add_recipe_to_shopping_list',
+        arguments: { recipe_id: recipe.id, servings: 8 },
+      }),
+    );
+    // The milk adds to the line already there: 1 l + 600 ml.
+    expect(
+      fromRecipe.find(
+        (a: { line: { name: string } }) => a.line.name === 'Milk',
+      ),
+    ).toMatchObject({
+      added_to_existing_line: true,
+      line: { amount: '1.6 l', for_recipes: ['Pancakes'] },
+    });
+
+    data(
+      await client.callTool({
+        name: 'merge_items',
+        arguments: {
+          from_item_id: addedItems[1].line.item_id,
+          into_item_id: addedItems[1].did_you_mean[0].item_id,
+        },
+      }),
+    );
+
+    const list = data(
+      await client.callTool({ name: 'get_shopping_list', arguments: {} }),
+    );
+    expect(list.to_buy.map((l: { name: string }) => l.name)).toEqual([
+      'Milk',
+      'Mouthwsh',
+      'Plain flour',
+      'Eggs',
+    ]);
+    const milk = list.to_buy[0];
+    data(
+      await client.callTool({
+        name: 'check_off_items',
+        arguments: { ids: [milk.id] },
+      }),
+    );
+    const history = data(
+      await client.callTool({
+        name: 'get_purchase_history',
+        arguments: { item_id: milk.item_id },
+      }),
+    );
+    expect(history).toEqual([
+      expect.objectContaining({
+        name: 'Milk',
+        quantity: 1.6,
+        unit: 'l',
+        source: 'mcp',
+      }),
+    ]);
+  });
+
+  it('keeps list tools behind the list scopes', async () => {
+    const { app } = setup();
+    const { cookie } = await signUp(app, 'cook@example.com');
+    const client = await connect(
+      app,
+      await tokenFor(app, cookie, ['lists:read']),
+    );
+    const names = (await client.listTools()).tools.map((t) => t.name);
+    expect(names).toContain('get_shopping_list');
+    expect(names).not.toContain('add_shopping_items');
+    expect(names).not.toContain('search_recipes');
+  });
 });

@@ -1,9 +1,10 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { type FormEvent, useState } from 'react';
-import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AuthCard, FormError } from '../components/auth-card';
 import { authClient } from '../lib/auth-client';
 import { authErrorMessage } from '../lib/auth-errors';
+import { nextPath } from '../lib/next';
 import { useInstance, useMe } from '../lib/queries';
 
 export function LoginPage() {
@@ -11,15 +12,16 @@ export function LoginPage() {
   const { data: me } = useMe();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const location = useLocation();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  if (me) return <Navigate to="/" replace />;
+  if (me) return <Navigate to={nextPath(location.search)} replace />;
   if (instance?.needsSetup) return <Navigate to="/register" replace />;
 
   const signedIn = async () => {
     await queryClient.invalidateQueries({ queryKey: ['me'] });
-    navigate('/', { replace: true });
+    navigate(nextPath(location.search), { replace: true });
   };
 
   const onSubmit = async (e: FormEvent<HTMLFormElement>) => {
@@ -68,6 +70,7 @@ function DefaultSignIn({
   onPasskey: () => void;
   onSubmit: (e: FormEvent<HTMLFormElement>) => void;
 }) {
+  const { search } = useLocation();
   return (
     <>
       <button type="button" className="btn-primary w-full" onClick={onPasskey}>
@@ -115,7 +118,7 @@ function DefaultSignIn({
       )}
       <p className="text-center text-sm text-stone-500">
         New here?{' '}
-        <Link to="/register" className="font-medium text-brand-600">
+        <Link to={`/register${search}`} className="font-medium text-brand-600">
           Create an account
         </Link>
       </p>

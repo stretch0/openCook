@@ -7,10 +7,12 @@ import {
   servingsFactor,
 } from '@opencook/domain';
 import type { Ingredient, Recipe } from '@opencook/schemas';
+import { FormError } from '../components/auth-card';
 import { BackLink } from '../components/back-link';
 import { RecipeThumb } from '../components/recipe-card';
 import { formatAgo, formatMinutes } from '../lib/format';
 import { useMe } from '../lib/queries';
+import { useRecipeToList } from '../lib/shopping';
 import {
   useDeleteRecipe,
   useForkRecipe,
@@ -339,9 +341,17 @@ function Actions({ recipe, servings }: { recipe: Recipe; servings: number }) {
   const fork = useForkRecipe();
   const remove = useDeleteRecipe();
   const cooked = useLogCooked(recipe.id);
+  const [shopping, setShopping] = useState(false);
 
   return (
     <div className="space-y-2">
+      {shopping && (
+        <AddToListSheet
+          recipe={recipe}
+          servings={servings}
+          onClose={() => setShopping(false)}
+        />
+      )}
       <div className="grid grid-cols-2 gap-2">
         <Link to={`/recipes/${recipe.id}/cook`} className="btn-primary">
           Start cooking
@@ -353,6 +363,14 @@ function Actions({ recipe, servings }: { recipe: Recipe; servings: number }) {
           onClick={() => cooked.mutate({ servings })}
         >
           {cooked.isSuccess ? 'Logged ✓' : 'I cooked this'}
+        </button>
+        <button
+          type="button"
+          className="btn-secondary col-span-2"
+          disabled={!recipe.ingredients.length}
+          onClick={() => setShopping(true)}
+        >
+          Add ingredients to shopping list
         </button>
       </div>
       <p className="text-center text-xs text-stone-500">
@@ -488,5 +506,125 @@ function Notes({ recipe }: { recipe: Recipe }) {
         <p className="text-sm text-stone-500">Only you can see your notes.</p>
       )}
     </section>
+  );
+}
+
+/** Pick which ingredients to buy (things to taste and optional ones start unticked). */
+function AddToListSheet({
+  recipe,
+  servings,
+  onClose,
+}: {
+  recipe: Recipe;
+  servings: number;
+  onClose: () => void;
+}) {
+  const factor = servingsFactor(recipe.servings, servings);
+  const [picked, setPicked] = useState(
+    () =>
+      new Set(
+        recipe.ingredients
+          .filter((i) => !i.optional && i.scaling !== 'to_taste')
+          .map((i) => i.id),
+      ),
+  );
+  const add = useRecipeToList();
+  const toggle = (id: string) =>
+    setPicked((p) => {
+      const next = new Set(p);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  return (
+    <div
+      className="fixed inset-0 z-40 flex items-end justify-center bg-black/40 sm:items-center"
+      onClick={onClose}
+    >
+      <div
+        className="max-h-[85svh] w-full max-w-md space-y-3 overflow-y-auto rounded-t-2xl bg-white p-4 pb-[max(1rem,env(safe-area-inset-bottom))] dark:bg-stone-900 sm:rounded-2xl"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-label="Add to shopping list"
+      >
+        <h2 className="text-lg font-semibold">Add to shopping list</h2>
+        <p className="text-sm text-stone-500">
+          For {servings} {servings === 1 ? 'person' : 'people'}. Untick anything
+          you already have.
+        </p>
+        {add.isSuccess ? (
+          <div className="space-y-3">
+            <p>
+              Added {add.data.length} item{add.data.length === 1 ? '' : 's'}
+              {add.data.some((a) => a.combined)
+                ? ', adding to some already on the list'
+                : ''}
+              .
+            </p>
+            <div className="flex gap-2">
+              <Link className="btn-primary" to="/list">
+                View list
+              </Link>
+              <button type="button" className="btn-secondary" onClick={onClose}>
+                Done
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <ul className="space-y-1">
+              {recipe.ingredients.map((i) => {
+                const amount = displayAmount(i, factor);
+                return (
+                  <li key={i.id}>
+                    <label className="flex cursor-pointer items-start gap-3 py-1">
+                      <input
+                        type="checkbox"
+                        className="mt-1 h-4 w-4 accent-brand-600"
+                        checked={picked.has(i.id)}
+                        onChange={() => toggle(i.id)}
+                      />
+                      <span>
+                        {amount && (
+                          <strong className="font-semibold">{amount} </strong>
+                        )}
+                        {i.name}
+                        {i.scaling === 'to_taste' && (
+                          <span className="text-stone-500"> (to taste)</span>
+                        )}
+                        {i.optional && (
+                          <span className="text-stone-500"> (optional)</span>
+                        )}
+                      </span>
+                    </label>
+                  </li>
+                );
+              })}
+            </ul>
+            <FormError message={add.error?.message ?? null} />
+            <div className="flex gap-2">
+              <button
+                type="button"
+                className="btn-primary flex-1"
+                disabled={!picked.size || add.isPending}
+                onClick={() =>
+                  add.mutate({
+                    recipeId: recipe.id,
+                    servings,
+                    ingredientIds: [...picked],
+                  })
+                }
+              >
+                Add {picked.size} item{picked.size === 1 ? '' : 's'}
+              </button>
+              <button type="button" className="btn-secondary" onClick={onClose}>
+                Cancel
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
   );
 }

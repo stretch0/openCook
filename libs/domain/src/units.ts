@@ -245,6 +245,7 @@ export const UNITS: UnitDef[] = [
   u('stalk', 'other', 1, 'any', 'stalk', 'stalks', ['stalks'], true),
   u('stick', 'other', 1, 'any', 'stick', 'sticks', ['sticks'], true),
   u('slice', 'other', 1, 'any', 'slice', 'slices', ['slices'], true),
+  u('loaf', 'other', 1, 'any', 'loaf', 'loaves', ['loaves'], true),
   u('rasher', 'other', 1, 'any', 'rasher', 'rashers', ['rashers'], true),
   u(
     'fillet',

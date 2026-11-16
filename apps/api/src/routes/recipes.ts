@@ -7,6 +7,7 @@ import {
   noteInputSchema,
   recipeInputSchema,
   recipeListQuerySchema,
+  recipeToListSchema,
   updateRecipeSchema,
 } from '@opencook/schemas';
 import { type AuthedEnv, requireUser } from '../context.js';
@@ -22,6 +23,7 @@ import {
   setNote,
   updateRecipe,
 } from '../services/recipes.js';
+import { addRecipeToList } from '../services/shopping.js';
 import { imageFetcher, viewerOf } from './viewer.js';
 
 export const recipeRoutes = new Hono<AuthedEnv>()
@@ -96,6 +98,17 @@ export const recipeRoutes = new Hono<AuthedEnv>()
         viewerOf(c),
         c.req.param('id'),
         c.get('config').origin,
+      ),
+      201,
+    ),
+  )
+  .post('/:id/to-list', zValidator('json', recipeToListSchema), (c) =>
+    c.json(
+      addRecipeToList(
+        c.get('db'),
+        viewerOf(c),
+        c.req.param('id'),
+        c.req.valid('json'),
       ),
       201,
     ),

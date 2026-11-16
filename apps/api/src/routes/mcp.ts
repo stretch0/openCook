@@ -6,7 +6,18 @@ import { importRecipeFromUrl } from '@opencook/recipe-import';
 import type { Config } from '../config.js';
 import type { AppEnv } from '../context.js';
 import { downloadImage } from '../services/images.js';
-import { householdOf } from '../services/households.js';
+import { householdOf, householdRecipeIds } from '../services/households.js';
+import { mergeItems } from '../services/items.js';
+import {
+  addRecipeToList,
+  addToList,
+  checkListItems,
+  getList,
+  listLists,
+  purchaseHistory,
+  removeListItems,
+  updateListItem,
+} from '../services/shopping.js';
 import {
   type Viewer,
   createRecipe,
@@ -40,6 +51,24 @@ function servicesFor(db: Db, config: Config, viewer: Viewer): OpenCookServices {
     setNote: (id, text) => setNote(db, viewer, id, text),
     logCooked: (id, input) => logCooked(db, viewer, id, input),
     forkRecipe: (id) => forkRecipe(db, viewer, id, config.origin),
+    listLists: () => listLists(db, viewer),
+    getList: (id) => getList(db, viewer, id),
+    addToList: (id, entries) => addToList(db, viewer, id, entries),
+    updateListItem: (id, line, patch) =>
+      updateListItem(db, viewer, id, line, patch),
+    removeListItems: (id, ids) => removeListItems(db, viewer, id, ids),
+    checkListItems: (id, ids, checked) =>
+      checkListItems(db, viewer, id, ids, checked, 'mcp'),
+    addRecipeToList: (id, input) => addRecipeToList(db, viewer, id, input),
+    purchaseHistory: (input) => purchaseHistory(db, viewer, input),
+    mergeItems: (from, into) =>
+      mergeItems(
+        db,
+        viewer.householdId,
+        from,
+        into,
+        householdRecipeIds(db, viewer.householdId),
+      ),
     importFromUrl: (url) =>
       importRecipeFromUrl(url, { allowPrivate: config.allowPrivateImports }),
   };

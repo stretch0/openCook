@@ -1,8 +1,14 @@
 import { zValidator } from '@hono/zod-validator';
 import { Hono } from 'hono';
 import { z } from 'zod';
+import { mergeItemsSchema as mergeSchema } from '@opencook/schemas';
 import { type AuthedEnv, requireUser } from '../context.js';
-import { autocompleteItems, searchItems } from '../services/items.js';
+import {
+  autocompleteItems,
+  mergeItems,
+  searchItems,
+} from '../services/items.js';
+import { householdRecipeIds } from '../services/households.js';
 import { viewerOf } from './viewer.js';
 
 export const itemRoutes = new Hono<AuthedEnv>()
@@ -29,4 +35,12 @@ export const itemRoutes = new Hono<AuthedEnv>()
           c.req.valid('query').name,
         ),
       ),
-  );
+  )
+  /** "These are the same": folds one item into another for the household. */
+  .post('/merge', zValidator('json', mergeSchema), (c) => {
+    const db = c.get('db');
+    const v = viewerOf(c);
+    const { from, into } = c.req.valid('json');
+    const recipeIds = householdRecipeIds(db, v.householdId);
+    return c.json(mergeItems(db, v.householdId, from, into, recipeIds));
+  });

@@ -142,3 +142,83 @@ test.describe('signed in', () => {
     );
   });
 });
+
+test.describe('shared shopping list', () => {
+  test('two people in one household see each other’s changes live', async ({
+    browser,
+  }) => {
+    // Andrew (the admin from the first test) invites Sam.
+    const andrewContext = await browser.newContext({ storageState: authFile });
+    const andrew = await andrewContext.newPage();
+    await andrew.goto('/settings');
+    await andrew.getByRole('button', { name: 'Invite someone' }).click();
+    const linkBox = andrew.locator('code', { hasText: '/join/' });
+    await expect(linkBox).toHaveText(/\/join\/[\w-]+$/);
+    const link = await linkBox.innerText();
+
+    // Sam opens the link signed out, creates an account and is brought back.
+    const samContext = await browser.newContext();
+    const sam = await samContext.newPage();
+    await sam.goto(new URL(link as string).pathname);
+    await sam.getByRole('link', { name: 'Create an account' }).click();
+    await sam.getByLabel('Name').fill('Sam');
+    await sam.getByLabel('Email').fill('sam@example.com');
+    await sam.getByLabel('Password').fill('correct horse battery');
+    await sam.getByRole('button', { name: /Create/ }).click();
+    await sam.getByRole('button', { name: /^Join / }).click();
+    await expect(
+      sam.getByRole('heading', { name: 'Shopping list' }),
+    ).toBeVisible();
+
+    // Andrew adds milk; it appears on Sam's phone without a reload.
+    await andrew.goto('/list');
+    await andrew.getByLabel('Add to list').fill('2 x milk');
+    await andrew.getByRole('button', { name: 'Add', exact: true }).click();
+    await expect(andrew.getByText('Milk')).toBeVisible();
+    await expect(
+      sam.getByRole('checkbox', { name: 'Bought Milk' }),
+    ).toBeVisible();
+
+    // Adding "mouth wash" and then "Mouthwash" makes one line.
+    await sam.getByLabel('Add to list').fill('mouth wash');
+    await sam.getByRole('button', { name: 'Add', exact: true }).click();
+    await sam.getByLabel('Add to list').fill('Mouthwash');
+    await sam.getByRole('button', { name: 'Add', exact: true }).click();
+    await expect(
+      andrew.getByRole('checkbox', { name: /^Bought mouth/i }),
+    ).toHaveCount(1);
+
+    // Sam ticks the milk off in the shop; it leaves Andrew's list too.
+    // A ticked line leaves the list at once, so click rather than check().
+    await sam.getByRole('checkbox', { name: 'Bought Milk' }).click();
+    await expect(
+      andrew.getByRole('checkbox', { name: 'Bought Milk' }),
+    ).toHaveCount(0);
+    await andrew.getByRole('button', { name: /Recently bought/ }).click();
+    await expect(andrew.getByText('2 Milk')).toBeVisible();
+
+    await andrewContext.close();
+    await samContext.close();
+  });
+
+  test('adds a recipe’s ingredients to the list', async ({ browser }) => {
+    const context = await browser.newContext({ storageState: authFile });
+    const page = await context.newPage();
+    await page.goto('/');
+    await page.getByRole('link', { name: /dal/i }).first().click();
+    await page
+      .getByRole('button', { name: 'Add ingredients to shopping list' })
+      .click();
+    const dialog = page.getByRole('dialog', { name: 'Add to shopping list' });
+    // Salt is "to taste", so it starts unticked.
+    await expect(
+      dialog.getByRole('checkbox', { name: /Salt/ }),
+    ).not.toBeChecked();
+    await dialog.getByRole('button', { name: /^Add \d+ items?$/ }).click();
+    await dialog.getByRole('link', { name: 'View list' }).click();
+    await expect(
+      page.getByText('for Weeknight red lentil dal').first(),
+    ).toBeVisible();
+    await context.close();
+  });
+});

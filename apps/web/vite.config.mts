@@ -67,6 +67,8 @@ export default defineConfig(() => ({
             urlPattern: ({ url, request }) =>
               url.pathname.startsWith('/api/') &&
               !url.pathname.startsWith('/api/auth/') &&
+              // Live list updates are a stream, never something to cache.
+              !url.pathname.endsWith('/events') &&
               request.method === 'GET',
             handler: 'NetworkFirst',
             options: {

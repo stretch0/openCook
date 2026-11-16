@@ -1,9 +1,16 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { type FormEvent, useState } from 'react';
-import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import {
+  Link,
+  Navigate,
+  useLocation,
+  useNavigate,
+  useSearchParams,
+} from 'react-router-dom';
 import { AuthCard, FormError } from '../components/auth-card';
 import { authClient } from '../lib/auth-client';
 import { authErrorMessage } from '../lib/auth-errors';
+import { nextPath } from '../lib/next';
 import { useInstance, useMe } from '../lib/queries';
 
 type SignUpInput = Parameters<typeof authClient.signUp.email>[0];
@@ -14,10 +21,11 @@ export function RegisterPage() {
   const [params] = useSearchParams();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const location = useLocation();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  if (me) return <Navigate to="/" replace />;
+  if (me) return <Navigate to={nextPath(location.search)} replace />;
 
   const needsSetup = instance?.needsSetup ?? false;
   const needsInvite = !needsSetup && (instance?.inviteOnly ?? false);
@@ -41,7 +49,7 @@ export function RegisterPage() {
       return;
     }
     await queryClient.invalidateQueries();
-    navigate('/', { replace: true });
+    navigate(nextPath(location.search), { replace: true });
   };
 
   return (
@@ -124,7 +132,10 @@ export function RegisterPage() {
       {!needsSetup && (
         <p className="text-center text-sm text-stone-500">
           Already have an account?{' '}
-          <Link to="/login" className="font-medium text-brand-600">
+          <Link
+            to={`/login${location.search}`}
+            className="font-medium text-brand-600"
+          >
             Sign in
           </Link>
         </p>

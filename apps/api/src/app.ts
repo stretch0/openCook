@@ -13,6 +13,8 @@ import type { AppEnv } from './context.js';
 import { securityHeaders } from './security-headers.js';
 import { HttpError } from './services/errors.js';
 import { adminRoutes } from './routes/admin.js';
+import { householdRoutes } from './routes/household.js';
+import { listRoutes, purchaseRoutes } from './routes/lists.js';
 import { imageRoutes } from './routes/images.js';
 import { instanceRoutes } from './routes/instance.js';
 import { itemRoutes } from './routes/items.js';
@@ -71,6 +73,9 @@ export function createApp({
   app.route('/api/admin', adminRoutes);
   app.route('/api/recipes', recipeRoutes);
   app.route('/api/items', itemRoutes);
+  app.route('/api/household', householdRoutes);
+  app.route('/api/lists', listRoutes);
+  app.route('/api/purchases', purchaseRoutes);
   app.route('/api/tokens', tokenRoutes);
   app.route('/api/images', imageRoutes);
   app.route('/mcp', mcpRoutes);
