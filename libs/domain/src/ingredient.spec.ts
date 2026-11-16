@@ -172,3 +172,11 @@ describe('hostile input', () => {
     expect(Date.now() - started).toBeLessThan(1000);
   });
 });
+
+describe('repeated brackets', () => {
+  it('stays fast on many unclosed brackets', () => {
+    const started = Date.now();
+    parseIngredientLine('(' + '(('.repeat(50_000));
+    expect(Date.now() - started).toBeLessThan(1000);
+  });
+});

@@ -114,7 +114,7 @@ export function parseIngredientLine(line: string): ParsedIngredient {
     preparation = name.slice(comma + 1).trim() || null;
     name = name.slice(0, comma);
   }
-  const bracket = name.match(/ ?\(([^)]*)\) ?/);
+  const bracket = name.match(/ ?\(([^()]*)\) ?/);
   if (bracket) {
     notes.push(bracket[1].trim());
     name = name.replace(bracket[0], ' ');

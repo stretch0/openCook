@@ -28,7 +28,7 @@ const AMOUNT_IN_TEXT = new RegExp(
 
 // No optional spaces inside: the captures are trimmed instead, which keeps
 // the pattern linear on any input.
-const TOKEN = /\{\{(ing|qty):([^}]*)\}\}/g;
+const TOKEN = /\{\{(ing|qty):([^{}]*)\}\}/g;
 
 function escapeRegExp(s: string) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

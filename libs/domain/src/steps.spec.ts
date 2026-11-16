@@ -53,3 +53,11 @@ describe('hostile step text', () => {
     );
   });
 });
+
+describe('repeated openers', () => {
+  it('stays fast on many unclosed brackets and tokens', () => {
+    const started = Date.now();
+    scaleStepText('{{ing:' + '{{ing:|'.repeat(30_000), 2);
+    expect(Date.now() - started).toBeLessThan(1000);
+  });
+});
