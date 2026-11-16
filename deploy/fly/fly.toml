@@ -1,8 +1,9 @@
 # openCook on Fly.io, with your data on a volume. See docs/FLY.md.
 #
-# Change `app`, `ORIGIN` and `primary_region` before deploying.
+# Set up for opencook-andrew. Running your own? Change `app`, `ORIGIN` and
+# `primary_region` before deploying.
 
-app = 'my-opencook'
+app = 'opencook-andrew'
 primary_region = 'lhr'
 
 [build]
@@ -13,7 +14,7 @@ primary_region = 'lhr'
 [env]
   # The address people use. Passkeys are tied to its hostname, so settle on
   # it before anyone adds one.
-  ORIGIN = 'https://my-opencook.fly.dev'
+  ORIGIN = 'https://opencook-andrew.fly.dev'
   # Fly's proxy sets X-Forwarded-For, so the sign-in rate limit may trust it.
   TRUST_PROXY = 'true'
   # It's on the internet: people sign up with invites you make in the app.
