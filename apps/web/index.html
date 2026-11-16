@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>openCook</title>
+    <base href="/" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#ea580c" />
+    <meta
+      name="description"
+      content="Your self-hosted recipe book."
+    />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+    <script>
+      // Light or dark before the first paint, so the page never flashes the
+      // wrong one. Kept in step with src/lib/theme.ts.
+      (function () {
+        var media = matchMedia('(prefers-color-scheme: dark)');
+        function apply() {
+          var choice = null;
+          try {
+            choice = localStorage.getItem('opencook-theme');
+          } catch (e) {}
+          var dark = choice === 'dark' || (choice !== 'light' && media.matches);
+          document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+        }
+        apply();
+        media.addEventListener('change', apply);
+        window.addEventListener('storage', apply);
+      })();
+    </script>
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
