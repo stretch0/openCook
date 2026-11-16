@@ -18,7 +18,7 @@ export type StepIngredient = IngredientAmount & {
 // pieces" or times like "bake for 20 minutes" are left alone.
 const MEASURE_ALIASES = UNITS.filter((d) => d.dimension !== 'other')
   .flatMap((d) => [d.code, d.singular, d.plural, ...d.aliases])
-  .map((a) => a.replace(/[.]/g, '\\.'))
+  .map(escapeRegExp)
   .sort((a, b) => b.length - a.length);
 
 const AMOUNT_IN_TEXT = new RegExp(
@@ -26,7 +26,13 @@ const AMOUNT_IN_TEXT = new RegExp(
   'gi',
 );
 
-const TOKEN = /\{\{\s*(ing|qty)\s*:\s*([^}]+?)\s*\}\}/g;
+// No optional spaces inside: the captures are trimmed instead, which keeps
+// the pattern linear on any input.
+const TOKEN = /\{\{(ing|qty):([^}]*)\}\}/g;
+
+function escapeRegExp(s: string) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
 /**
  * Splits a step into text and amounts, scaling amounts by `factor`.
@@ -50,7 +56,7 @@ export function scaleStep(
   for (const m of text.matchAll(TOKEN)) {
     out.push(...scaleFreeText(text.slice(last, m.index), factor, preference));
     if (m[1] === 'ing') {
-      const ing = byId.get(m[2]);
+      const ing = byId.get(m[2].trim());
       if (ing) {
         const amount = displayAmount(ing, factor, preference);
         out.push({
@@ -59,7 +65,7 @@ export function scaleStep(
         });
       }
     } else {
-      out.push(...scaleFreeText(m[2], factor, preference, true));
+      out.push(...scaleFreeText(m[2].trim(), factor, preference, true));
     }
     last = (m.index ?? 0) + m[0].length;
   }

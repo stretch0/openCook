@@ -55,10 +55,7 @@ export function parseRecipePage(html: string, url: string): ImportResult {
     'description',
     'twitter:description',
   ]);
-  const text = [
-    caption,
-    plainText(html.match(/<body[\s\S]*<\/body>/i)?.[0] ?? html),
-  ]
+  const text = [caption, plainText(bodyOf(html))]
     .filter(Boolean)
     .join('\n\n')
     .slice(0, 20_000);
@@ -91,4 +88,12 @@ export async function importRecipeFromUrl(
     };
   }
   return parseRecipePage(new TextDecoder().decode(page.body), page.url);
+}
+
+/** The page's <body>, or the whole page if it has none. */
+function bodyOf(html: string): string {
+  const lower = html.toLowerCase();
+  const start = lower.indexOf('<body');
+  const end = lower.lastIndexOf('</body>');
+  return start >= 0 && end > start ? html.slice(start, end) : html;
 }

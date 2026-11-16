@@ -1,0 +1,7 @@
+# Image user should not be root (Dockerfile has no USER).
+# The container starts as root only so docker-entrypoint.sh can hand the data
+# folder (a bind mount or Fly volume, created owned by root) to the `node`
+# user; it then drops root for good with setpriv before starting openCook.
+AVD-DS-0002
+DS-0002
+DS002

@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import sharp, { type OutputInfo } from 'sharp';
 import { type Db, schema } from '@opencook/db';
@@ -46,9 +46,13 @@ export async function saveImage(
   }
   const hash = createHash('sha256').update(output.data).digest('hex');
   const path = imagePath(dataDir, hash);
-  if (!existsSync(path)) {
-    mkdirSync(uploadsDir(dataDir), { recursive: true });
-    writeFileSync(path, output.data);
+  mkdirSync(uploadsDir(dataDir), { recursive: true });
+  try {
+    // 'wx' fails if the file exists, so there's no check-then-write race.
+    writeFileSync(path, output.data, { flag: 'wx' });
+  } catch (e) {
+    // The same photo is already stored: files are named by their contents.
+    if ((e as NodeJS.ErrnoException).code !== 'EEXIST') throw e;
   }
   const [row] = db
     .insert(schema.image)

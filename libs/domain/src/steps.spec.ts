@@ -38,3 +38,18 @@ describe('scaleStep', () => {
     );
   });
 });
+
+describe('hostile step text', () => {
+  it('stays fast on unclosed tokens', () => {
+    const started = Date.now();
+    scaleStepText('{{{{ing:' + ' '.repeat(100_000), 2);
+    expect(Date.now() - started).toBeLessThan(1000);
+  });
+
+  it('still accepts spaces inside tokens', () => {
+    const ingredients = [{ id: 'a', name: 'butter', quantity: 50, unit: 'g' }];
+    expect(scaleStepText('Melt {{ing: a }}.', 2, { ingredients })).toBe(
+      'Melt 100 g butter.',
+    );
+  });
+});

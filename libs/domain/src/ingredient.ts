@@ -47,16 +47,18 @@ export function parseIngredientLine(line: string): ParsedIngredient {
   let scaling: Scaling = 'linear';
   const notes: string[] = [];
 
-  if (/\(optional\)|,?\s*\boptional\s*$|^optional:?\s*/i.test(s)) {
+  // Whitespace is already collapsed to single spaces, so the patterns below
+  // use ` ?` rather than `\s*`: bounded, so they stay fast on any input.
+  if (/\(optional\)|,? ?\boptional ?$|^optional:? ?/i.test(s)) {
     optional = true;
     s = s
-      .replace(/\s*\(optional\)/i, '')
-      .replace(/,?\s*\boptional\s*$/i, '')
-      .replace(/^optional:?\s*/i, '');
+      .replace(/ ?\(optional\)/i, '')
+      .replace(/,? ?\boptional ?$/i, '')
+      .replace(/^optional:? ?/i, '');
   }
   if (/\bto taste\b/i.test(s)) {
     scaling = 'to_taste';
-    s = s.replace(/,?\s*\bto taste\b/i, '').trim();
+    s = s.replace(/,? ?\bto taste\b/i, '').trim();
   }
 
   let quantity: number | null = null;
@@ -89,7 +91,7 @@ export function parseIngredientLine(line: string): ParsedIngredient {
     if (pack) {
       const container = unitAt(s.slice(pack[0].length));
       if (container && unitDef(container.code)?.dimension === 'other') {
-        notes.push(pack[1].replace(/\s*-\s*/, ' ').trim());
+        notes.push(pack[1].replace(/ ?- ?/, ' ').trim());
         s = s.slice(pack[0].length);
       }
     }
@@ -112,7 +114,7 @@ export function parseIngredientLine(line: string): ParsedIngredient {
     preparation = name.slice(comma + 1).trim() || null;
     name = name.slice(0, comma);
   }
-  const bracket = name.match(/\s*\(([^)]*)\)\s*/);
+  const bracket = name.match(/ ?\(([^)]*)\) ?/);
   if (bracket) {
     notes.push(bracket[1].trim());
     name = name.replace(bracket[0], ' ');

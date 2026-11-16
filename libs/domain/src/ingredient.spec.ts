@@ -163,3 +163,12 @@ describe('ingredientLine', () => {
     });
   });
 });
+
+describe('hostile input', () => {
+  it('stays fast on long runs of spaces', () => {
+    const started = Date.now();
+    parseIngredientLine('1' + ' '.repeat(100_000) + 'x');
+    parseIngredientLine('salt,' + ' '.repeat(100_000) + 'optional!');
+    expect(Date.now() - started).toBeLessThan(1000);
+  });
+});

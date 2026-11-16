@@ -161,3 +161,24 @@ describe('safeFetch', () => {
     expect(result.recipe?.title).toBe('Best Banana Bread');
   });
 });
+
+describe('hostile pages', () => {
+  it('stays fast on pages built to make regular expressions backtrack', () => {
+    const started = Date.now();
+    parseRecipePage('<svg'.repeat(50_000), 'https://e.com');
+    parseRecipePage('<title'.repeat(50_000), 'https://e.com');
+    parseRecipePage('<body'.repeat(50_000), 'https://e.com');
+    parseRecipePage(
+      '<script type="application/ld+json"'.repeat(20_000),
+      'https://e.com',
+    );
+    expect(Date.now() - started).toBeLessThan(2000);
+  });
+
+  it('drops scripts, styles and comments from page text', () => {
+    const html =
+      '<body><p>Keep</p><script>bad()</script><SCRIPT>also()</SCRIPT><style>x{}</style><!-- note --><p>this</p></body>';
+    const result = parseRecipePage(html, 'https://e.com');
+    expect(result.pageText).toBe('Keep\nthis');
+  });
+});

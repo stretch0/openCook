@@ -1,4 +1,4 @@
-import { decodeEntities, plainText } from './html.js';
+import { decodeEntities, elements, plainText } from './html.js';
 
 /** A recipe found in a page's schema.org data, as plain values. */
 export type FoundRecipe = {
@@ -21,10 +21,11 @@ type Obj = { [k: string]: Json };
 /** Every JSON-LD block in the page, parsed. Broken blocks are skipped. */
 export function jsonLdBlocks(html: string): Json[] {
   const out: Json[] = [];
-  const re =
-    /<script\b[^>]*type\s*=\s*["']?application\/ld\+json["']?[^>]*>([\s\S]*?)<\/script>/gi;
-  for (const m of html.matchAll(re)) {
-    const raw = m[1].trim().replace(/^<!\[CDATA\[|\]\]>$/g, '');
+  const scripts = elements(html, 'script').filter((e) =>
+    e.attrs.toLowerCase().includes('application/ld+json'),
+  );
+  for (const { inner } of scripts) {
+    const raw = inner.trim().replace(/^<!\[CDATA\[|\]\]>$/g, '');
     try {
       out.push(JSON.parse(raw));
     } catch {
