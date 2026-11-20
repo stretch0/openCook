@@ -222,3 +222,74 @@ test.describe('shared shopping list', () => {
     await context.close();
   });
 });
+
+test.describe('meal plan', () => {
+  test.use({ storageState: authFile });
+
+  test('plans a recipe and shops for the week, skipping staples', async ({
+    page,
+  }) => {
+    // Salt is something we always have.
+    await page.goto('/pantry');
+    const common = page.getByRole('region', { name: 'Common staples' });
+    await common.getByRole('checkbox', { name: 'salt', exact: true }).check();
+    await common.getByRole('button', { name: /^Save/ }).click();
+    await expect(
+      page.getByRole('region', { name: 'Staples' }).getByText('salt'),
+    ).toBeVisible();
+
+    // A recipe that's on nobody's list yet; plan it for today.
+    const created = await page.request.post('/api/recipes', {
+      headers: { origin: new URL(page.url()).origin },
+      data: {
+        title: 'Tomato spaghetti',
+        servings: 2,
+        ingredients: [
+          '200 g spaghetti',
+          '400 g chopped tomatoes',
+          'Salt, to taste',
+        ],
+      },
+    });
+    expect(created.ok()).toBe(true);
+    await page.goto('/');
+    await page.getByRole('link', { name: /Tomato spaghetti/ }).click();
+    await page.getByRole('button', { name: 'Add to meal plan' }).click();
+    const sheet = page.getByRole('dialog', { name: 'Add to meal plan' });
+    await sheet
+      .getByRole('button', { name: /^Plan for \d+ on today$/ })
+      .click();
+    await sheet.getByRole('link', { name: 'View plan' }).click();
+    await expect(
+      page.getByRole('heading', { name: 'Meal plan' }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: /Tomato spaghetti/ }),
+    ).toBeVisible();
+
+    // Shop for the week: salt is "probably got", so it isn't ticked.
+    await page.getByRole('button', { name: /Shop for this week/ }).click();
+    const shop = page.getByRole('dialog', { name: 'Shop for these meals' });
+    const probably = shop.getByRole('region', { name: 'Probably got' });
+    await expect(probably.getByText('You always have this')).toBeVisible();
+    await expect(probably.getByRole('checkbox')).not.toBeChecked();
+    const toBuy = shop.getByRole('region', { name: 'To buy' });
+    await expect(
+      toBuy.getByRole('checkbox', { name: /Spaghetti/ }),
+    ).toBeChecked();
+    await shop.getByRole('button', { name: /^Add \d+ to list$/ }).click();
+    await shop.getByRole('link', { name: 'View list' }).click();
+    await expect(
+      page.getByRole('checkbox', { name: 'Bought Spaghetti' }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('checkbox', { name: 'Bought Salt' }),
+    ).toHaveCount(0);
+
+    // Cooking it from the plan logs it on the recipe.
+    await page.goto('/plan');
+    await page.getByRole('button', { name: /Tomato spaghetti/ }).click();
+    await page.getByRole('button', { name: 'Mark as cooked' }).click();
+    await expect(page.getByText(/· cooked/)).toBeVisible();
+  });
+});

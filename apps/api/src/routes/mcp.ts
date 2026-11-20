@@ -2,6 +2,7 @@ import { eq } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { type Db, schema } from '@opencook/db';
 import { handleMcpRequest, type OpenCookServices } from '@opencook/mcp';
+import { today } from '@opencook/domain';
 import { importRecipeFromUrl } from '@opencook/recipe-import';
 import type { Config } from '../config.js';
 import type { AppEnv } from '../context.js';
@@ -30,10 +31,28 @@ import {
   setNote,
   updateRecipe,
 } from '../services/recipes.js';
+import {
+  getPantry,
+  restockSuggestions,
+  updatePantry,
+} from '../services/pantry.js';
+import {
+  addNeedsToList,
+  addPlanEntry,
+  getPlan,
+  removePlanEntry,
+  shoppingNeeds,
+  updatePlanEntry,
+} from '../services/planner.js';
 import { verifyToken } from '../services/tokens.js';
 import { version } from '../version.js';
 
-function servicesFor(db: Db, config: Config, viewer: Viewer): OpenCookServices {
+function servicesFor(
+  db: Db,
+  config: Config,
+  viewer: Viewer,
+  timezone: string,
+): OpenCookServices {
   const fetchImage = async (url: string, ownerId: string) =>
     (
       await downloadImage(db, config.dataDir, ownerId, url, {
@@ -69,6 +88,16 @@ function servicesFor(db: Db, config: Config, viewer: Viewer): OpenCookServices {
         into,
         householdRecipeIds(db, viewer.householdId),
       ),
+    getPlan: (input) =>
+      getPlan(db, viewer, { ...input, today: today(timezone) }),
+    addPlanEntry: (input) => addPlanEntry(db, viewer, input),
+    updatePlanEntry: (id, patch) => updatePlanEntry(db, viewer, id, patch),
+    removePlanEntry: (id) => removePlanEntry(db, viewer, id),
+    shoppingNeeds: (selection) => shoppingNeeds(db, viewer, selection),
+    addNeedsToList: (input) => addNeedsToList(db, viewer, input),
+    getPantry: () => getPantry(db, viewer),
+    updatePantry: (input) => updatePantry(db, viewer, input),
+    restockSuggestions: () => restockSuggestions(db, viewer),
     importFromUrl: (url) =>
       importRecipeFromUrl(url, { allowPrivate: config.allowPrivateImports }),
   };
@@ -98,7 +127,7 @@ export const mcpRoutes = new Hono<AppEnv>().all('/', async (c) => {
     );
   }
   const user = db
-    .select({ units: schema.user.units })
+    .select({ units: schema.user.units, timezone: schema.user.timezone })
     .from(schema.user)
     .where(eq(schema.user.id, grant.userId))
     .get();
@@ -108,7 +137,7 @@ export const mcpRoutes = new Hono<AppEnv>().all('/', async (c) => {
     householdId: householdOf(db, grant.userId),
   };
   return handleMcpRequest(c.req.raw, {
-    services: servicesFor(db, config, viewer),
+    services: servicesFor(db, config, viewer, user.timezone),
     scopes: grant.scopes,
     preference: user.units,
     origin: config.origin,

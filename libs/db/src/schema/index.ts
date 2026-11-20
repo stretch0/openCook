@@ -3,3 +3,4 @@ export * from './households.js';
 export * from './items.js';
 export * from './recipes.js';
 export * from './shopping.js';
+export * from './planner.js';

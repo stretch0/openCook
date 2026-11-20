@@ -8,6 +8,8 @@ import { CookPage } from '../pages/cook';
 import { DiscoverPage } from '../pages/discover';
 import { JoinPage } from '../pages/join';
 import { ListPage } from '../pages/list';
+import { PantryPage } from '../pages/pantry';
+import { PlanPage } from '../pages/plan';
 import { LoginPage } from '../pages/login';
 import { RecipePage } from '../pages/recipe';
 import { RecipeEditPage } from '../pages/recipe-edit';
@@ -52,6 +54,8 @@ export function App() {
           <Route element={<Layout />}>
             <Route index element={<RecipesPage />} />
             <Route path="discover" element={<DiscoverPage />} />
+            <Route path="plan" element={<PlanPage />} />
+            <Route path="pantry" element={<PantryPage />} />
             <Route path="list" element={<ListPage />} />
             <Route path="list/:listId" element={<ListPage />} />
             <Route path="join/:code" element={<JoinPage />} />

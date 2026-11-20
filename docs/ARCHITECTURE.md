@@ -85,9 +85,21 @@ Matching (`matchItem`, `resolveItems`) looks for an exact key or alias, househol
 - **Live updates**: every change calls `listChanged(listId)`, an in-process event emitter (one server, so no broker is needed). `GET /api/lists/:id/events` is a Server-Sent Events stream that sends `ready`, then `changed` on each edit, with a comment every 25 s to keep proxies from closing it. The web app refetches on each event; the service worker never caches the stream.
 - The web app ticks lines off immediately (optimistic update) and rolls back if the server refuses. TanStack Query pauses requests made without a connection and sends them when it's back, while the app stays open.
 
+## Meal plan and pantry
+
+- `meal_plan_entry`: household, `date` (YYYY-MM-DD in the household's calendar; "this week" uses the user's time zone), `slot` (breakfast/lunch/dinner/snack), an optional `recipe_id` plus a `title` (the recipe's title when planned, or free text), servings (the recipe's when empty), note and `cooked_at`. Marking it cooked also writes a `cook_log` row for the recipe.
+- **Shopping for meals** (`shoppingNeeds`): takes plan days (meals not yet cooked) and/or recipes with servings, scales each recipe's non-optional ingredients, and adds them up with `aggregateNeeds` (same item, compatible amounts). Each line is sorted by `classifyNeed`:
+  - **already on the list**: an unticked line for that item;
+  - **need**: marked low or run out, or a staple that's overdue, or bought regularly and due again;
+  - **probably have**: a staple ("You always have this"), bought within half its usual gap, or (with too little history to know the gap) bought in the last 3 days, with the reason in words.
+    `addNeedsToList` adds the chosen lines (by default those marked need) through `addToList`, keeping every recipe in the line's `sources`. The app always shows the sorted lines for review first; nothing is left off silently.
+- `pantry_item` (household, item): `staple` and `status` (`have`/`low`/`out`). Ticking an item off the list sets it back to `have`. Rows that say nothing (`have`, not a staple) are removed. `SUGGESTED_STAPLES` in `libs/domain/src/planning.ts` seeds the first-run checklist.
+- **Running low** (`restockState`): purchases on the same day count as one shop; with three or more shops, the usual gap is the median gap in days, and an item is due once the time since it was last bought reaches 85% of that. `restockSuggestions` lists due items that aren't on the ongoing list, most overdue first.
+- Household members can open each other's private recipes (not edit them), since a shared plan needs everyone's ingredients.
+
 ## Visibility, notes and copies
 
-- Recipes are `private` (default), `unlisted` (anyone signed in here with the link) or `public` (listed in Discover). Only the owner can change one.
+- Recipes are `private` (default; the owner and their household), `unlisted` (anyone signed in here with the link) or `public` (listed in Discover). Only the owner can change one.
 - `recipe_note` is one private note per person per recipe, including other people's recipes.
 - `cook_log` records each time someone cooked a recipe; it feeds "last cooked".
 - Forking copies a recipe with `forked_from_id` and an `origin` (author, instance, revision), so copies keep their provenance, including, later, across instances.

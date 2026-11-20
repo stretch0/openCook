@@ -17,6 +17,10 @@ const SCOPE_LABELS: Record<TokenScope, string> = {
   'recipes:write': 'Save, change and delete my recipes',
   'lists:read': 'Read our shopping lists and purchase history',
   'lists:write': 'Add to, change and tick off our shopping lists',
+  'plan:read': 'Read our meal plan and work out what it needs',
+  'plan:write': 'Plan, move and remove meals',
+  'pantry:read': 'Read our staples and what’s running low',
+  'pantry:write': 'Change our staples and what’s running low',
 };
 
 /** Personal tokens that let AI assistants use openCook over MCP. */

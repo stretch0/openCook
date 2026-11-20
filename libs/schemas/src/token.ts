@@ -6,6 +6,10 @@ export const TOKEN_SCOPES = [
   'recipes:write',
   'lists:read',
   'lists:write',
+  'plan:read',
+  'plan:write',
+  'pantry:read',
+  'pantry:write',
 ] as const;
 export const tokenScopeSchema = z.enum(TOKEN_SCOPES);
 export type TokenScope = z.infer<typeof tokenScopeSchema>;

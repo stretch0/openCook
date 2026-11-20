@@ -304,4 +304,105 @@ describe('mcp', () => {
     expect(names).not.toContain('add_shopping_items');
     expect(names).not.toContain('search_recipes');
   });
+
+  it('plans meals and shops for them, asking about what you probably have', async () => {
+    const { app } = setup();
+    const { cookie } = await signUp(app, 'cook@example.com');
+    const client = await connect(
+      app,
+      await tokenFor(app, cookie, [
+        'recipes:write',
+        'plan:read',
+        'plan:write',
+        'lists:write',
+        'pantry:read',
+        'pantry:write',
+      ]),
+    );
+    const curry = data(
+      await client.callTool({
+        name: 'create_recipe',
+        arguments: {
+          title: 'Curry',
+          servings: 2,
+          ingredients: ['1 onion', '1 tsp cumin', '400 ml coconut milk'],
+        },
+      }),
+    );
+
+    data(
+      await client.callTool({
+        name: 'update_pantry',
+        arguments: { add_staples: ['cumin', 'salt'] },
+      }),
+    );
+    const pantry = data(
+      await client.callTool({ name: 'get_pantry', arguments: {} }),
+    );
+    expect(pantry.staples).toEqual(['cumin', 'salt']);
+
+    const planned = data(
+      await client.callTool({
+        name: 'add_to_meal_plan',
+        arguments: { date: '2026-11-18', recipe_id: curry.id, servings: 4 },
+      }),
+    );
+    expect(planned).toMatchObject({
+      title: 'Curry',
+      meal: 'dinner',
+      servings: 4,
+      cooked: false,
+    });
+
+    const preview = data(
+      await client.callTool({
+        name: 'preview_shopping',
+        arguments: { from: '2026-11-16', to: '2026-11-22' },
+      }),
+    );
+    expect(
+      preview.map((n: { name: string; status: string; amount: string }) => [
+        n.name,
+        n.status,
+        n.amount,
+      ]),
+    ).toEqual([
+      ['Onion', 'need', '2'],
+      ['Cumin', 'probably_have', '2 tsp'],
+      ['Coconut milk', 'need', '800 ml'],
+    ]);
+
+    // The user says they're out of cumin too.
+    const added = data(
+      await client.callTool({
+        name: 'add_needed_to_shopping_list',
+        arguments: {
+          from: '2026-11-16',
+          to: '2026-11-22',
+          include: preview.map((n: { key: string }) => n.key),
+        },
+      }),
+    );
+    expect(added.map((a: { name: string }) => a.name)).toEqual([
+      'Onion',
+      'Cumin',
+      'Coconut milk',
+    ]);
+
+    const done = data(
+      await client.callTool({
+        name: 'update_meal_plan_entry',
+        arguments: { id: planned.id, cooked: true },
+      }),
+    );
+    expect(done.cooked).toBe(true);
+    expect(
+      data(
+        await client.callTool({
+          name: 'get_restock_suggestions',
+          arguments: {},
+        }),
+      ),
+    ).toEqual([]);
+  });
 });

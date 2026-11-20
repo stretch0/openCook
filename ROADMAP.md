@@ -39,15 +39,15 @@ openCook is a self-hosted recipe app for home cooks: track, find and create reci
 - ✅ MCP: `get_shopping_lists`, `get_shopping_list`, `add_shopping_items`, `update_shopping_item`, `remove_shopping_items`, `check_off_items`, `add_recipe_to_shopping_list`, `merge_items`, `get_purchase_history`, behind new `lists:read` / `lists:write` scopes
 - Later: changes made with no signal are retried while the app stays open, but not yet kept across a restart of the app (a persistent offline queue)
 
-## M3 – Meal planner and pantry intelligence
+## M3 – Meal planner and pantry
 
-- Week planner: pick recipes (or "leftovers") per day and meal, with servings
-- "Add this week to the list": aggregate scaled ingredients across recipes, then sort each into **need**, **probably have** (with the reason) or **already on the list**, with a review sheet before anything is added
-- Staples you always have (oil, salt, spices), confirmed once
-- **Restock prediction** from purchase history: median gap between purchases; "you usually buy milk every 6 days; it's been 7"
-- MCP: `get_meal_plan`, `set_meal_plan`, `preview_shopping_for_recipes` (a dry run with reasons), `add_recipes_to_shopping_list`, `get_pantry`, `update_pantry`, `get_restock_suggestions`, `get_purchase_history`
+- ✅ Week planner shared by the household: recipes (at chosen servings) or notes like "Leftovers" per day and meal; move, remove, mark cooked (logs it on the recipe); "Add to meal plan" from a recipe
+- ✅ "Shop for this week": the week's ingredients added up across recipes and sorted into **to buy**, **probably got** (with the reason) and **already on the list**, reviewed before anything is added; each line names its recipes
+- ✅ Pantry: staples you always have (a common-staples checklist to start), things marked running low or run out (buying them clears it)
+- ✅ **Running low** from purchase history: median gap between purchases (once bought three times); suggested at 85% of the usual gap, on the list page and in the pantry
+- ✅ Household members can see each other's recipes (only the owner edits), so either can plan and shop for them
+- ✅ MCP: `get_meal_plan`, `add_to_meal_plan`, `update_meal_plan_entry`, `remove_from_meal_plan`, `preview_shopping`, `add_needed_to_shopping_list`, `get_pantry`, `update_pantry`, `get_restock_suggestions`, with `plan:*` and `pantry:*` scopes
 - **OAuth 2.1** on `/mcp` so claude.ai and ChatGPT can add openCook as a connector (discovery, dynamic registration, PKCE, consent screen), as openGym does
-- Scopes for plans and pantry
 
 ## M4 – Social
 

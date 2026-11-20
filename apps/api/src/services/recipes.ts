@@ -142,14 +142,33 @@ function lastCooked(db: Db, userId: string, recipeIds: string[]) {
   );
 }
 
+function sameHousehold(db: Db, viewer: Viewer, userId: string) {
+  return !!db
+    .select({ id: schema.householdMember.userId })
+    .from(schema.householdMember)
+    .where(
+      and(
+        eq(schema.householdMember.householdId, viewer.householdId),
+        eq(schema.householdMember.userId, userId),
+      ),
+    )
+    .get();
+}
+
 function loadRow(db: Db, viewer: Viewer, id: string): RecipeRow {
   const row = db
     .select()
     .from(schema.recipe)
     .where(eq(schema.recipe.id, id))
     .get();
-  // Unlisted recipes can be opened by anyone with the link.
-  if (!row || (row.ownerId !== viewer.userId && row.visibility === 'private')) {
+  // Unlisted recipes can be opened by anyone with the link, and a
+  // household sees each other's recipes (to plan and shop for them).
+  if (
+    !row ||
+    (row.ownerId !== viewer.userId &&
+      row.visibility === 'private' &&
+      !sameHousehold(db, viewer, row.ownerId))
+  ) {
     throw notFound('Recipe not found');
   }
   return row;

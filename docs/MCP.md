@@ -60,9 +60,17 @@ Adding openCook as a connector on claude.ai or ChatGPT, signing in instead of pa
 | `add_recipe_to_shopping_list` | A recipe's ingredients, scaled to the servings, noting which recipe wanted them | `lists:write` |
 | `merge_items` | Two names are the same thing; teaches openCook the household's spelling | `lists:write` |
 
-Meal plan and pantry tools come with those features (see [ROADMAP.md](../ROADMAP.md)).
+| `get_meal_plan` | Planned meals, a week from Monday by default | `plan:read` |
+| `preview_shopping` | What plan days or recipes need: need / probably_have (with the reason) / already_on_list | `plan:read` |
+| `add_to_meal_plan` | Puts a recipe or a note like "Leftovers" on a day | `plan:write` |
+| `update_meal_plan_entry` | Moves a meal, changes servings or note, or marks it cooked | `plan:write` |
+| `remove_from_meal_plan` | Takes a meal off the plan | `plan:write` |
+| `add_needed_to_shopping_list` | Adds what the meals need (only "need" lines unless you pass `include`) | `plan:read` + `lists:write` |
+| `get_pantry` | Staples, things running low or run out, and staples not set up yet | `pantry:read` |
+| `get_restock_suggestions` | What the household usually buys and is about due to buy again | `pantry:read` |
+| `update_pantry` | Marks staples, or things running low / run out / back in | `pantry:write` |
 
-Try: _"I'm cooking the chickpea curry for 6 and the dal on Thursday. Put what I need on the shopping list, but ask me about spices first."_
+Try: _"Plan dinners Monday to Friday from my recipes, nothing too long on weekdays. Then work out the shopping and check with me about anything we've probably got."_
 
 ## Saving recipes from social media
 

@@ -21,6 +21,7 @@ import {
   visibilitySchema,
 } from '@opencook/schemas';
 import { type ListServices, registerListTools } from './list-tools.js';
+import { type PlanServices, registerPlanTools } from './plan-tools.js';
 
 /**
  * What the MCP tools need from the app. The API implements this with the
@@ -40,7 +41,8 @@ export type OpenCookServices = {
   logCooked(id: string, input: CookedInput): CookLogEntry;
   forkRecipe(id: string): Recipe;
   importFromUrl(url: string): Promise<ImportResult>;
-} & ListServices;
+} & ListServices &
+  PlanServices;
 
 export type McpContext = {
   services: OpenCookServices;
@@ -61,7 +63,9 @@ export const INSTRUCTIONS = `openCook is the user's self-hosted recipe book.
 - Write amounts in steps with units ("add 200 g flour") so they scale too.
 - Ask before deleting anything.
 - Shopping list: the household shares one ongoing list. Add plain lines like "2 x milk" or "500 g mince"; openCook matches names to items it knows and adds amounts to lines already there. When a result says match "new" and has suggestions, ask the user whether they meant one of them (merge_items teaches openCook for next time).
-- When the user says what they're cooking, use add_recipe_to_shopping_list with the servings they mention. It leaves out optional and "to taste" ingredients; ask about things they probably already have (spices, oil, salt) before adding them.`;
+- When the user says what they're cooking, use add_recipe_to_shopping_list with the servings they mention. It leaves out optional and "to taste" ingredients; ask about things they probably already have (spices, oil, salt) before adding them.
+- Meal planning: plan meals with add_to_meal_plan. To shop for them, call preview_shopping first; ask the user about anything marked probably_have (give the reason), then call add_needed_to_shopping_list with include set to the keys they want.
+- get_restock_suggestions lists things the household usually buys and is about due to buy again.`;
 
 const ok = (data: unknown): CallToolResult => ({
   content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
@@ -441,5 +445,6 @@ export function createMcpServer(ctx: McpContext): McpServer {
   }
 
   registerListTools(server, ctx, run);
+  registerPlanTools(server, ctx, run);
   return server;
 }
