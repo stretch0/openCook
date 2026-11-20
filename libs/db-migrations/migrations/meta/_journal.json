@@ -22,6 +22,13 @@
       "when": 1794867622768,
       "tag": "0002_meal_plan_and_pantry",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1795175856371,
+      "tag": "0003_oauth",
+      "breakpoints": true
     }
   ]
 }

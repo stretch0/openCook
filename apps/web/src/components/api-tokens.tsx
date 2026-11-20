@@ -12,7 +12,7 @@ import { api } from '../lib/api';
 import { formatAgo } from '../lib/format';
 import { FormError } from './auth-card';
 
-const SCOPE_LABELS: Record<TokenScope, string> = {
+export const SCOPE_LABELS: Record<TokenScope, string> = {
   'recipes:read': 'Read and search my recipes',
   'recipes:write': 'Save, change and delete my recipes',
   'lists:read': 'Read our shopping lists and purchase history',
@@ -62,22 +62,74 @@ export function ApiTokens() {
   };
 
   const endpoint = `${window.location.origin}/mcp`;
+  const grants = useQuery({
+    queryKey: ['grants'],
+    queryFn: () =>
+      api(
+        '/oauth/grants',
+        z.array(
+          z.object({
+            id: z.string(),
+            clientName: z.string(),
+            scopes: z.array(z.string()),
+            connectedAt: z.string(),
+            lastUsedAt: z.string().nullable(),
+          }),
+        ),
+      ),
+  });
+  const disconnect = useMutation({
+    mutationFn: (id: string) =>
+      api(`/oauth/grants/${id}`, z.undefined(), { method: 'DELETE' }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['grants'] }),
+  });
 
   return (
     <section className="card space-y-3">
       <h2 className="font-semibold">AI assistants</h2>
       <p className="text-sm text-stone-500">
-        Let an AI assistant such as Claude find and save recipes for you. Create
-        a token, then add openCook as an MCP server at{' '}
+        Let an AI assistant such as Claude or ChatGPT find and save recipes,
+        plan meals and do the shopping list for you. In claude.ai or the ChatGPT
+        app, add a custom connector with the address{' '}
         <code className="rounded bg-stone-100 px-1 dark:bg-stone-800">
           {endpoint}
         </code>{' '}
-        with the header{' '}
-        <code className="rounded bg-stone-100 px-1 dark:bg-stone-800">
-          Authorization: Bearer &lt;token&gt;
-        </code>
-        .
+        and sign in when it asks. For Claude Code or other tools that take a
+        token, create one below.
       </p>
+      {!!grants.data?.length && (
+        <div>
+          <h3 className="label">Connected apps</h3>
+          <ul className="divide-y divide-stone-200 dark:divide-stone-800">
+            {grants.data.map((g) => (
+              <li
+                key={g.id}
+                className="flex items-center justify-between gap-2 py-2 text-sm"
+              >
+                <div>
+                  <p className="font-medium">{g.clientName}</p>
+                  <p className="text-stone-500">
+                    {g.scopes.some((x) => x.endsWith(':write'))
+                      ? 'read & write'
+                      : 'read only'}{' '}
+                    ·{' '}
+                    {g.lastUsedAt
+                      ? `used ${formatAgo(g.lastUsedAt)}`
+                      : `connected ${formatAgo(g.connectedAt)}`}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="text-red-600"
+                  onClick={() => disconnect.mutate(g.id)}
+                >
+                  Disconnect
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {created && (
         <div className="space-y-2 rounded-xl bg-brand-50 p-3 text-sm dark:bg-brand-500/10">

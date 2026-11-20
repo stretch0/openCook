@@ -2,11 +2,27 @@
 
 openCook has an [MCP](https://modelcontextprotocol.io) server, so an AI assistant can find, save and change your recipes for you: "save this recipe", "what can I make with chickpeas?", "scale the dal for 6 and read me the method".
 
-## 1. Create a token
+There are two ways to connect, depending on the app.
+
+## Apps you sign in from: claude.ai, ChatGPT and others
+
+Apps that support remote MCP connectors with sign-in find openCook's sign-in by themselves:
+
+1. In the app's settings, add a **custom connector** (claude.ai: Settings → Connectors; ChatGPT: the connectors or apps settings, which may need developer mode) with the address `https://<your openCook>/mcp`.
+2. The app sends you to openCook. Sign in if you need to, check what it's asking for (untick anything you don't want it to do), and press **Allow**.
+3. You're sent back to the app, connected.
+
+The app gets an access token that lasts an hour and a refresh token it swaps for a new pair each time. Disconnect it any time in **Settings → AI assistants → Connected apps**. That ends its access straight away.
+
+This needs openCook on an `https://` address the app can reach (for example Fly.io), because the app's servers connect to it.
+
+## Apps that take a token: Claude Code, Claude Desktop config, scripts
+
+### 1. Create a token
 
 In openCook, open **Settings → AI assistants**, give the token a name ("Claude on my laptop"), choose what it may do and how long it lasts, and press **Create token**. Copy it straight away: it's shown once. Revoke it there whenever you like.
 
-## 2. Add openCook to your assistant
+### 2. Add openCook to your assistant
 
 The server is at `https://<your openCook>/mcp` and uses Streamable HTTP. Send the token as `Authorization: Bearer ock_…`.
 
@@ -33,7 +49,9 @@ claude mcp add --transport http opencook https://cook.example.com/mcp \
 
 Clients that only speak stdio can use [`mcp-remote`](https://www.npmjs.com/package/mcp-remote): `npx mcp-remote https://cook.example.com/mcp --header "Authorization: Bearer ock_…"`.
 
-Adding openCook as a connector on claude.ai or ChatGPT, signing in instead of pasting a token, needs OAuth, which is on the roadmap.
+## What an app may do
+
+Both kinds of connection use the same permissions (scopes): `recipes:read`, `recipes:write`, `lists:read`, `lists:write`, `plan:read`, `plan:write`, `pantry:read` and `pantry:write`. Tools an app isn't allowed to use aren't listed to it.
 
 ## Tools
 

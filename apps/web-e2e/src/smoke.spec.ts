@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { expect, test } from '@playwright/test';
@@ -291,5 +292,88 @@ test.describe('meal plan', () => {
     await page.getByRole('button', { name: /Tomato spaghetti/ }).click();
     await page.getByRole('button', { name: 'Mark as cooked' }).click();
     await expect(page.getByText(/· cooked/)).toBeVisible();
+  });
+});
+
+test.describe('connecting an AI app', () => {
+  test.use({ storageState: authFile });
+
+  test('an app signs in through the consent screen and gets a working token', async ({
+    page,
+  }) => {
+    await page.goto('/');
+    const callback = `${new URL(page.url()).origin}/callback-test`;
+
+    // The app finds the sign-in server from /mcp and registers itself.
+    const unauth = await page.request.post('/mcp', {
+      data: {},
+      failOnStatusCode: false,
+    });
+    expect(unauth.status()).toBe(401);
+    expect(unauth.headers()['www-authenticate']).toContain(
+      'resource_metadata=',
+    );
+    const registered = await page.request.post('/oauth/register', {
+      data: { client_name: 'Test AI', redirect_uris: [callback] },
+    });
+    const clientId = (await registered.json()).client_id as string;
+
+    const verifier = 'v'.repeat(64);
+    const challenge = createHash('sha256').update(verifier).digest('base64url');
+
+    // The person is sent to openCook, sees the consent screen and allows
+    // everything except changing the meal plan.
+    await page.goto(
+      `/oauth/authorize?${new URLSearchParams({
+        response_type: 'code',
+        client_id: clientId,
+        redirect_uri: callback,
+        code_challenge: challenge,
+        code_challenge_method: 'S256',
+        state: 'abc',
+        scope: 'recipes:read lists:read plan:write',
+      })}`,
+    );
+    await expect(
+      page.getByRole('heading', { name: 'Connect Test AI?' }),
+    ).toBeVisible();
+    await page
+      .getByRole('checkbox', { name: 'Plan, move and remove meals' })
+      .uncheck();
+    await page.getByRole('button', { name: 'Allow' }).click();
+    await page.waitForURL(/\/callback-test\?/);
+    const back = new URL(page.url());
+    expect(back.searchParams.get('state')).toBe('abc');
+
+    // The app swaps the code for tokens and uses them.
+    const tokenRes = await page.request.post('/oauth/token', {
+      form: {
+        grant_type: 'authorization_code',
+        code: back.searchParams.get('code') as string,
+        code_verifier: verifier,
+        client_id: clientId,
+        redirect_uri: callback,
+      },
+    });
+    const tokens = await tokenRes.json();
+    expect(tokens.scope).toBe('recipes:read lists:read');
+    const tools = await page.request.post('/mcp', {
+      headers: {
+        authorization: `Bearer ${tokens.access_token}`,
+        accept: 'application/json, text/event-stream',
+      },
+      data: { jsonrpc: '2.0', id: 1, method: 'tools/list', params: {} },
+    });
+    const names = (await tools.json()).result.tools.map(
+      (t: { name: string }) => t.name,
+    );
+    expect(names).toContain('get_shopping_list');
+    expect(names).not.toContain('add_to_meal_plan');
+
+    // It shows in Settings and can be disconnected.
+    await page.goto('/settings');
+    await expect(page.getByText('Test AI')).toBeVisible();
+    await page.getByRole('button', { name: 'Disconnect' }).click();
+    await expect(page.getByText('Test AI')).toHaveCount(0);
   });
 });

@@ -1,5 +1,6 @@
 import { eq } from 'drizzle-orm';
 import { Hono } from 'hono';
+import { cors } from 'hono/cors';
 import { type Db, schema } from '@opencook/db';
 import { handleMcpRequest, type OpenCookServices } from '@opencook/mcp';
 import { today } from '@opencook/domain';
@@ -107,40 +108,60 @@ function servicesFor(
  * The MCP endpoint AI assistants connect to, at /mcp. Authenticated with a
  * personal API token (Settings → AI assistants) sent as a Bearer token.
  */
-export const mcpRoutes = new Hono<AppEnv>().all('/', async (c) => {
-  const db = c.get('db');
-  const config = c.get('config');
-  const header = c.req.header('authorization') ?? '';
-  const token = header.match(/^Bearer\s+(.+)$/i)?.[1]?.trim();
-  const grant = token ? verifyToken(db, token) : null;
-  if (!grant) {
-    c.header(
-      'WWW-Authenticate',
-      'Bearer realm="openCook", error="invalid_token"',
-    );
-    return c.json(
-      {
-        error:
-          'Send an openCook API token as "Authorization: Bearer ock_…". Create one in Settings.',
-      },
-      401,
-    );
-  }
-  const user = db
-    .select({ units: schema.user.units, timezone: schema.user.timezone })
-    .from(schema.user)
-    .where(eq(schema.user.id, grant.userId))
-    .get();
-  if (!user) return c.json({ error: 'Unauthorized' }, 401);
-  const viewer = {
-    userId: grant.userId,
-    householdId: householdOf(db, grant.userId),
-  };
-  return handleMcpRequest(c.req.raw, {
-    services: servicesFor(db, config, viewer, user.timezone),
-    scopes: grant.scopes,
-    preference: user.units,
-    origin: config.origin,
-    version,
+export const mcpRoutes = new Hono<AppEnv>()
+  // Bearer tokens, never cookies, so browser-based clients may call it.
+  .use(
+    '*',
+    cors({
+      origin: '*',
+      allowMethods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
+      allowHeaders: [
+        'content-type',
+        'authorization',
+        'mcp-protocol-version',
+        'mcp-session-id',
+        'last-event-id',
+      ],
+      exposeHeaders: ['www-authenticate', 'mcp-session-id'],
+      maxAge: 86400,
+    }),
+  )
+  .all('/', async (c) => {
+    const db = c.get('db');
+    const config = c.get('config');
+    const header = c.req.header('authorization') ?? '';
+    const token = header.match(/^Bearer\s+(.+)$/i)?.[1]?.trim();
+    const grant = token ? verifyToken(db, token) : null;
+    if (!grant) {
+      // Points apps at the discovery document, which leads them to sign-in.
+      const metadata = `${config.origin}/.well-known/oauth-protected-resource/mcp`;
+      c.header(
+        'WWW-Authenticate',
+        `Bearer resource_metadata="${metadata}"${token ? ', error="invalid_token"' : ''}`,
+      );
+      return c.json(
+        {
+          error:
+            'Sign in to openCook from your AI app, or send an API token as "Authorization: Bearer ock_…" (Settings → AI assistants).',
+        },
+        401,
+      );
+    }
+    const user = db
+      .select({ units: schema.user.units, timezone: schema.user.timezone })
+      .from(schema.user)
+      .where(eq(schema.user.id, grant.userId))
+      .get();
+    if (!user) return c.json({ error: 'Unauthorized' }, 401);
+    const viewer = {
+      userId: grant.userId,
+      householdId: householdOf(db, grant.userId),
+    };
+    return handleMcpRequest(c.req.raw, {
+      services: servicesFor(db, config, viewer, user.timezone),
+      scopes: grant.scopes,
+      preference: user.units,
+      origin: config.origin,
+      version,
+    });
   });
-});

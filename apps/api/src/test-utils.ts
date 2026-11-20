@@ -13,7 +13,10 @@ const migrationsDir = fileURLToPath(
 );
 
 /** An app on an in-memory database, with files in a fresh temporary DATA_DIR. */
-export function setup(env: Record<string, string> = {}): {
+export function setup(
+  env: Record<string, string> = {},
+  { clientFetch }: { clientFetch?: typeof fetch } = {},
+): {
   app: ReturnType<typeof createApp>;
   db: Db;
   config: Config;
@@ -32,6 +35,7 @@ export function setup(env: Record<string, string> = {}): {
     db,
     auth: createAuth(db, config, { rateLimit: false }),
     config,
+    clientFetch,
   });
   return { app, db, config };
 }

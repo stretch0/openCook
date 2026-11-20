@@ -11,6 +11,8 @@ export default [
       '**/vite.config.*.timestamp*',
       '**/vitest.config.*.timestamp*',
       '**/test-output',
+      // Made and removed by db-migrations:check while lint may be running.
+      '**/.migrations-check-*',
     ],
   },
   {

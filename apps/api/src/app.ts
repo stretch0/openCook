@@ -20,6 +20,7 @@ import { imageRoutes } from './routes/images.js';
 import { instanceRoutes } from './routes/instance.js';
 import { itemRoutes } from './routes/items.js';
 import { mcpRoutes } from './routes/mcp.js';
+import { consentRoutes, oauthRoutes, wellKnownRoutes } from './routes/oauth.js';
 import { meRoutes } from './routes/me.js';
 import { recipeRoutes } from './routes/recipes.js';
 import { tokenRoutes } from './routes/tokens.js';
@@ -28,10 +29,13 @@ export function createApp({
   db,
   auth,
   config,
+  clientFetch,
 }: {
   db: Db;
   auth: Auth;
   config: Config;
+  /** How client metadata documents are fetched; for tests. */
+  clientFetch?: typeof fetch;
 }) {
   const app = new Hono<AppEnv>();
   const indexHtml = config.webDir ? readIndexHtml(config.webDir) : undefined;
@@ -46,12 +50,14 @@ export function createApp({
     c.set('config', config);
     await next();
   });
-  app.use('/mcp', async (c, next) => {
-    c.set('user', null);
-    c.set('db', db);
-    c.set('config', config);
-    await next();
-  });
+  for (const path of ['/mcp', '/oauth/*', '/.well-known/*']) {
+    app.use(path, async (c, next) => {
+      c.set('user', null);
+      c.set('db', db);
+      c.set('config', config);
+      await next();
+    });
+  }
 
   app.onError((err, c) => {
     if (err instanceof HttpError) {
@@ -81,7 +87,10 @@ export function createApp({
   app.route('/api/pantry', pantryRoutes);
   app.route('/api/tokens', tokenRoutes);
   app.route('/api/images', imageRoutes);
+  app.route('/api/oauth', consentRoutes(clientFetch));
   app.route('/mcp', mcpRoutes);
+  app.route('/oauth', oauthRoutes());
+  app.route('/.well-known', wellKnownRoutes);
   app.all('/api/*', (c) => c.json({ error: 'Not found' }, 404));
 
   if (config.webDir && indexHtml !== undefined) {
