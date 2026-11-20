@@ -47,7 +47,7 @@ openCook is a self-hosted recipe app for home cooks: track, find and create reci
 - ✅ **Running low** from purchase history: median gap between purchases (once bought three times); suggested at 85% of the usual gap, on the list page and in the pantry
 - ✅ Household members can see each other's recipes (only the owner edits), so either can plan and shop for them
 - ✅ MCP: `get_meal_plan`, `add_to_meal_plan`, `update_meal_plan_entry`, `remove_from_meal_plan`, `preview_shopping`, `add_needed_to_shopping_list`, `get_pantry`, `update_pantry`, `get_restock_suggestions`, with `plan:*` and `pantry:*` scopes
-- **OAuth 2.1** on `/mcp` so claude.ai and ChatGPT can add openCook as a connector (discovery, dynamic registration, PKCE, consent screen), as openGym does
+- ✅ **Sign in from claude.ai and ChatGPT**: openCook is its own OAuth 2.1 server for `/mcp` (protected resource and server discovery, dynamic client registration and client ID metadata documents, PKCE S256 only, tokens for the `/mcp` resource, a consent screen that lets you untick permissions, hour-long access tokens and rotating refresh tokens where a replayed one ends the connection, revocation, and "Connected apps" in Settings)
 
 ## M4 – Social
 

@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from 'node:crypto';
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, isNull } from 'drizzle-orm';
 import { type Db, schema } from '@opencook/db';
 import type { ApiToken, CreateToken, CreatedToken } from '@opencook/schemas';
 import { HttpError, notFound } from './errors.js';
@@ -25,13 +25,21 @@ function toApiToken(t: typeof schema.apiToken.$inferSelect): ApiToken {
 }
 
 export function listTokens(db: Db, userId: string): ApiToken[] {
-  return db
-    .select()
-    .from(schema.apiToken)
-    .where(eq(schema.apiToken.userId, userId))
-    .orderBy(desc(schema.apiToken.createdAt))
-    .all()
-    .map(toApiToken);
+  return (
+    db
+      .select()
+      .from(schema.apiToken)
+      // Access tokens of connected apps are listed under the app instead.
+      .where(
+        and(
+          eq(schema.apiToken.userId, userId),
+          isNull(schema.apiToken.grantId),
+        ),
+      )
+      .orderBy(desc(schema.apiToken.createdAt))
+      .all()
+      .map(toApiToken)
+  );
 }
 
 export function createToken(

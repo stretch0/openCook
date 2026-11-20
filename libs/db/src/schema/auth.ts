@@ -1,4 +1,11 @@
-import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import {
+  type AnySQLiteColumn,
+  index,
+  integer,
+  sqliteTable,
+  text,
+} from 'drizzle-orm/sqlite-core';
+import { oauthGrant } from './oauth.js';
 import { id, timestamp, timestamps } from './columns.js';
 
 // Tables used by Better Auth (user, session, account, verification, passkey).
@@ -125,7 +132,14 @@ export const apiToken = sqliteTable(
     prefix: text('prefix').notNull(),
     lastUsedAt: timestamp('last_used_at'),
     expiresAt: timestamp('expires_at'),
+    /** Set for access tokens given to a connected app (see oauth_grant). */
+    grantId: text('grant_id').references((): AnySQLiteColumn => oauthGrant.id, {
+      onDelete: 'cascade',
+    }),
     ...timestamps,
   },
-  (t) => [index('api_token_user_id_idx').on(t.userId)],
+  (t) => [
+    index('api_token_user_id_idx').on(t.userId),
+    index('api_token_grant_idx').on(t.grantId),
+  ],
 );

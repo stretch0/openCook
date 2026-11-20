@@ -51,7 +51,13 @@ export default defineConfig(() => ({
       workbox: {
         globPatterns: ['**/*.{js,css,html}'],
         navigateFallback: '/index.html',
-        navigateFallbackDenylist: [/^\/api\//, /^\/mcp/],
+        // Server routes, not pages: the API, MCP, OAuth and discovery.
+        navigateFallbackDenylist: [
+          /^\/api\//,
+          /^\/mcp/,
+          /^\/oauth\//,
+          /^\/\.well-known\//,
+        ],
         runtimeCaching: [
           {
             // Recipe photos never change once uploaded.

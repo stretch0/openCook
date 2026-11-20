@@ -4,3 +4,4 @@ export * from './items.js';
 export * from './recipes.js';
 export * from './shopping.js';
 export * from './planner.js';
+export * from './oauth.js';

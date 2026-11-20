@@ -4,6 +4,7 @@ import { Layout } from '../components/layout';
 import { UpdatePrompt } from '../components/update-prompt';
 import { useMe } from '../lib/queries';
 import { AdminPage } from '../pages/admin';
+import { ConnectPage } from '../pages/connect';
 import { CookPage } from '../pages/cook';
 import { DiscoverPage } from '../pages/discover';
 import { JoinPage } from '../pages/join';
@@ -51,6 +52,7 @@ export function App() {
         <Route path="/register" element={<RegisterPage />} />
         <Route element={<RequireUser />}>
           <Route path="recipes/:id/cook" element={<CookPage />} />
+          <Route path="connect" element={<ConnectPage />} />
           <Route element={<Layout />}>
             <Route index element={<RecipesPage />} />
             <Route path="discover" element={<DiscoverPage />} />
